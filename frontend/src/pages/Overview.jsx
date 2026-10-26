@@ -62,7 +62,7 @@ export default function Overview() {
         <div className="hero-text"><h1>Welcome, {user.name}!</h1><p>{cap(user.role)} dashboard · {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
         <span className="tagpill">Demo build</span>
       </div>
-      <div className="alert info">Farm and user figures come from demo data in your browser. Weather, tasks and activities are sample values. No real farm, weather or database services are connected.</div>
+      
 
       <div className="cards">
         {cards.map((c) => <div className="card stat" key={c.label}><c.icon size={22} /><div><strong>{c.value}</strong><span>{c.label}</span></div></div>)}
