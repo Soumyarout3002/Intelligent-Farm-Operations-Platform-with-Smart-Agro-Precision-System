@@ -10,12 +10,13 @@ import { isMobile } from '../utils/validation';
 export default function Profile() {
   const { user, refresh } = useAuth();
   const toast = useToast();
-
+  
   const [name, setName] = useState(user?.name || '');
   const [mobile, setMobile] = useState(user?.mobile || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [language, setLanguage] = useState('English');
 
   // Load the latest profile from MySQL-backed API on page load.
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function Profile() {
 
         setName(profile.name || '');
         setMobile(profile.mobile || '');
+        setLanguage(profile.language || 'English');
 
         // Update browser session so other components can use fresh data.
         updateSessionUser(profile);
@@ -65,12 +67,14 @@ export default function Profile() {
 
     try {
       const updatedProfile = await updateMyProfile({
-        name: name.trim(),
-        mobile
-      });
+  name: name.trim(),
+  mobile,
+  language
+});
 
-      setName(updatedProfile.name || '');
-      setMobile(updatedProfile.mobile || '');
+setName(updatedProfile.name || '');
+setMobile(updatedProfile.mobile || '');
+setLanguage(updatedProfile.language || 'English');
 
       // Keep stored user information and navbar in sync.
       updateSessionUser(updatedProfile);
@@ -130,6 +134,19 @@ export default function Profile() {
                 onChange={(e) => setMobile(e.target.value)}
               />
             </div>
+            
+            <div className="field">
+              <label htmlFor="pl">Preferred language</label>
+              <select
+                id="pl"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                <option value="English">English</option>
+                <option value="Hindi">Hindi</option>
+              </select>
+            </div>
+
 
             {user?.organization && (
               <p className="muted">

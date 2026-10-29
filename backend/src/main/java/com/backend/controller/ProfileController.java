@@ -49,7 +49,9 @@ public class ProfileController {
                     regexp = "^$|^[0-9]{10,15}$",
                     message = "Mobile must contain 10 to 15 digits."
             )
-            String mobile
+            String mobile,
+            @Size(max = 30, message = "Language preference is too long.")
+            String language
     ) {}
 
     // Update the authenticated user's profile; never accept a user ID from the client.
@@ -81,6 +83,12 @@ public class ProfileController {
                         ? null
                         : body.mobile().trim()
         );
+
+        user.setLanguage(
+        body.language() == null || body.language().isBlank()
+                ? "English"
+                : body.language().trim()
+);
 
         // JPA persists the updated managed entity when the transaction completes.
         User savedUser = userRepository.save(user);

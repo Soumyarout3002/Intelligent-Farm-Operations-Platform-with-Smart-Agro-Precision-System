@@ -28,7 +28,16 @@ export async function seedUsers() {
   if (allRaw().length) return;
   const seed = [
     { name: 'Demo Admin', email: 'admin@farmverse.demo', mobile: '9000000001', role: 'admin', organization: 'FarmVerse Nexus', password: 'Admin@123' },
-    { name: 'Demo Manager', email: 'manager@farmverse.demo', mobile: '9000000002', role: 'manager', organization: 'Green Valley Co-op', designation: 'Farm Manager', assignedFarm: 'Green Valley Farm', password: 'Manager@123' },
+    {
+  name: 'Demo Field Worker',
+  email: 'fieldworker@farmverse.demo',
+  mobile: '9000000002',
+  role: 'field_worker',
+  organization: 'Green Valley Co-op',
+  designation: 'Field Worker',
+  assignedFarm: 'Green Valley Farm',
+  password: 'FieldWorker@123'
+},
     { name: 'Demo Farmer', email: 'farmer@farmverse.demo', mobile: '9000000003', role: 'farmer', organization: 'Sunrise Farm', language: 'English', password: 'Farmer@123' },
   ];
   saveRaw(await Promise.all(seed.map(makeUser)));
@@ -194,25 +203,27 @@ export async function deleteUser(id, currentUserId) {
  * Update the currently logged-in user's profile through Spring Boot.
  * The backend verifies the session token and saves changes in MySQL.
  */
-export async function updateMyProfile({ name, mobile }) {
+
+export async function updateMyProfile({ name, mobile, language }) {
   const token = getToken();
 
   if (!token) {
     throw new Error('Your session has expired. Please log in again.');
   }
 
-  // Call the authenticated backend profile endpoint.
   const updatedProfile = await request('/api/profile', {
     method: 'PUT',
     token,
     body: {
       name: name.trim(),
-      mobile: mobile?.trim() || ''
+      mobile: mobile?.trim() || '',
+      language: language?.trim() || 'English'
     }
   });
 
   return updatedProfile;
 }
+
 
 // Fetch the latest profile from the backend.
 export async function getMyProfile() {
