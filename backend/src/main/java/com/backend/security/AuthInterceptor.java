@@ -31,17 +31,19 @@ public class AuthInterceptor implements HandlerInterceptor {
         }
 
         String path = request.getRequestURI();
+            
+           // Only the intended POST authentication endpoints are public.
+                String method = request.getMethod();
 
-        // Registration and login must be accessible without an existing token.
-            if (path.equals("/api/auth/login")
-                    || path.equals("/api/auth/register")
-                    || path.equals("/api/auth/forgot-password")
-                    || path.equals("/api/auth/reset-password")
-                    || ("POST".equalsIgnoreCase(request.getMethod())
-                    && (path.equals("/api/dev/password-reset/link")
-                    || path.equals("/api/dev/password-reset/token")))) {
-                return true;
-            }
+                if ("POST".equalsIgnoreCase(method)
+                        && (path.equals("/api/auth/login")
+                        || path.equals("/api/auth/register")
+                        || path.equals("/api/auth/forgot-password")
+                        || path.equals("/api/auth/reset-password")
+                        || path.equals("/api/dev/password-reset/link")
+                        || path.equals("/api/dev/password-reset/token"))) {
+                    return true;
+                }
 
 
         // Protected API calls must provide a Bearer token.
