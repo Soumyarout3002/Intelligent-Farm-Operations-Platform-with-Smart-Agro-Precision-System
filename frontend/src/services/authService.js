@@ -134,12 +134,27 @@ export async function register(role, data) {
 }
 
 // Password reset is not implemented by the backend yet.
+
 export async function requestPasswordReset(email) {
   if (!email?.trim()) {
     throw new Error('Email is required.');
   }
 
-  throw new Error('Password reset is not connected to the backend yet.');
+  const endpoint = import.meta.env.DEV
+    ? '/api/dev/password-reset/link'
+    : '/api/auth/forgot-password';
+
+  return request(endpoint, {
+    method: 'POST',
+    body: { email: email.trim().toLowerCase() },
+  });
+}
+
+export async function resetPassword(token, newPassword) {
+  return request('/api/auth/reset-password', {
+    method: 'POST',
+    body: { token, newPassword },
+  });
 }
 
 

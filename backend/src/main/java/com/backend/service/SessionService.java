@@ -100,4 +100,10 @@ public class SessionService {
     // Return the raw token only at creation time; never store it in the DB.
     public record CreatedSession(String token, Instant expiresAt) {
     }
+    
+@Transactional
+public int revokeAllSessionsForUser(Long userId) {
+    return sessionRepository.revokeAllActiveSessionsByUserId(userId);
+}
+
 }

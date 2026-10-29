@@ -10,6 +10,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.backend.dto.ForgotPasswordRequest;
+import com.backend.dto.ResetPasswordRequest;
+import com.backend.service.PasswordResetService;
 
 import java.util.Map;
 
@@ -19,12 +22,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final SessionService sessionService;
+    private final PasswordResetService passwordResetService;
 
     public AuthController(
             AuthService authService,
-            SessionService sessionService) {
+            SessionService sessionService, PasswordResetService passwordResetService) {
         this.authService = authService;
         this.sessionService = sessionService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/register")
@@ -111,4 +116,42 @@ public class AuthController {
                 Map.of("message", "Logout successful")
         );
     }
+
+@PostMapping("/forgot-password")
+public ResponseEntity<?> forgotPassword(
+        @Valid @RequestBody ForgotPasswordRequest request) {
+
+    try {
+        passwordResetService.createResetToken(request.email());
+    } catch (IllegalArgumentException ex) {
+        // Do not reveal whether an email is registered.
+    }
+
+    return ResponseEntity.ok(
+            Map.of("message",
+                    "If the account is eligible, password reset instructions will be sent.")
+    );
+}
+
+@PostMapping("/reset-password")
+public ResponseEntity<?> resetPassword(
+        @Valid @RequestBody ResetPasswordRequest request) {
+
+    try {
+        passwordResetService.resetPassword(
+                request.token(),
+                request.newPassword()
+        );
+
+        return ResponseEntity.ok(
+                Map.of("message", "Password reset successful. Please log in again.")
+        );
+
+    } catch (IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(
+                Map.of("message", "Invalid or expired reset token.")
+        );
+    }
+}
+
 }

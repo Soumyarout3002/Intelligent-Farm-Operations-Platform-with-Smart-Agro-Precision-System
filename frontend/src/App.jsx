@@ -5,6 +5,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import Overview from './pages/Overview';
 import UserManagement from './pages/UserManagement';
 import FarmManagement from './pages/FarmManagement';
@@ -27,6 +28,10 @@ export default function App() {
       <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
       <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
       <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
+      <Route
+  path="/reset-password"
+  element={<PublicOnly><ResetPassword /></PublicOnly>}
+/>
       <Route element={<DashboardLayout />}>
         <Route path="/overview" element={<Guard perm="overview"><Overview /></Guard>} />
         <Route path="/users" element={<Guard perm="users"><UserManagement /></Guard>} />
