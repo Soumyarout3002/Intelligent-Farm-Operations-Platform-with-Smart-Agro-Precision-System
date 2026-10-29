@@ -9,7 +9,7 @@ import Field from '../components/Field';
 import { ROLES, cap } from '../config/permissions';
 import { validateFields } from '../utils/validation';
 
-const STATUS = ['active', 'inactive', 'suspended'];
+const STATUS = ['active', 'inactive'];
 
 function UserForm({ initial, isSelf, onSubmit, onCancel }) {
   const editing = !!initial;
@@ -17,8 +17,9 @@ function UserForm({ initial, isSelf, onSubmit, onCancel }) {
     { name: 'name', label: 'Full name', required: true },
     { name: 'email', label: 'Email', type: 'email', required: true },
     { name: 'mobile', label: 'Mobile number', type: 'tel' },
-    { name: 'role', label: 'Role', type: 'select', options: ROLES, required: true, disabled: isSelf },
-    { name: 'organization', label: 'Organization / farm' },
+    ...(editing
+  ? [{ name: 'role', label: 'Role', type: 'select', options: ROLES, disabled: true }]
+  : [{ name: 'role', label: 'Role', type: 'select', options: ROLES, required: true }]),
     ...(editing ? [] : [{ name: 'status', label: 'Status', type: 'select', options: STATUS, required: true }, { name: 'password', label: 'Temporary password', type: 'password', required: true }]),
   ];
   const [values, setValues] = useState(initial || { role: 'farmer', status: 'active' });
@@ -73,7 +74,10 @@ export default function UserManagement() {
 
   return (
     <>
-      <div className="page-head"><div><h1>User & Access Management</h1><p className="muted">{shown.length} user(s). Frontend demo only: the backend must enforce real permissions.</p></div>
+      <div className="page-head"><div><h1>User & Access Management</h1>
+      <p className="muted">
+        {shown.length} user(s). Manage registered users and their access.
+      </p></div>
         <button className="btn primary" onClick={() => setModal({ type: 'add' })}><Plus size={16} /> Add user</button></div>
       <div className="toolbar">
         <div className="search"><Search size={16} /><input aria-label="Search users" placeholder="Search by name or email" value={q} onChange={(e) => setQ(e.target.value)} /></div>

@@ -1,6 +1,8 @@
 // DEMO user store (LocalStorage). Backend: GET/POST /users, GET/PUT/DELETE /users/:id, PATCH /users/:id/status
 import { read, write } from '../utils/storage';
 import { isEmail, isMobile } from '../utils/validation';
+import { request } from './api';
+import { getToken } from './authService';
 
 const KEY = 'fvn_users';
 export const strip = ({ passwordHash, salt, ...u }) => u;
@@ -32,7 +34,25 @@ export async function seedUsers() {
   saveRaw(await Promise.all(seed.map(makeUser)));
 }
 
-export const listUsers = async () => allRaw().map(strip);
+export async function listUsers() {
+  const token = getToken();
+
+  if (!token) {
+    throw new Error('Your session has expired. Please log in again.');
+  }
+
+  const users = await request('/api/admin/users', { token });
+
+  return users.map((user) => ({
+    ...user,
+    role: (user.role || '').toLowerCase().replace(/-/g, '_'),
+    status: (user.status || 'ACTIVE').toLowerCase(),
+    mobile: user.mobile || '',
+    language: user.language || 'English',
+    organization: user.organization || '',
+    createdAt: user.createdAt || '',
+  }));
+}
 export const getUser = async (id) => { const u = allRaw().find((x) => x.id === id); return u ? strip(u) : null; };
 
 function check(d, users, ignoreId) {
@@ -43,44 +63,169 @@ function check(d, users, ignoreId) {
     throw new Error('A user with this email already exists.');
 }
 
-export async function createUser(d) {
-  const users = allRaw();
-  check(d, users);
-  if (!d.password || d.password.length < 8) throw new Error('Password must be at least 8 characters.');
-  const u = await makeUser({ ...d, email: d.email.trim().toLowerCase(), name: d.name.trim() });
-  saveRaw([...users, u]);
-  return strip(u);
+export async function createUser(data) {
+  if (!data.name?.trim()) {
+    throw new Error('Name is required.');
+  }
+
+  if (!data.email?.trim()) {
+    throw new Error('Email is required.');
+  }
+
+  if (!data.password || data.password.length < 8) {
+    throw new Error('Password must be at least 8 characters.');
+  }
+
+  const token = getToken();
+
+  if (!token) {
+    throw new Error('Your session has expired. Please log in again.');
+  }
+
+  const user = await request('/api/admin/users', {
+    method: 'POST',
+    token,
+    body: {
+      name: data.name.trim(),
+      email: data.email.trim().toLowerCase(),
+      password: data.password,
+      role: data.role.toUpperCase(),
+      mobile: data.mobile?.trim() || null,
+      language: data.language || 'English',
+    },
+  });
+
+  return {
+    ...user,
+    role: (user.role || '').toLowerCase().replace(/-/g, '_'),
+    status: (user.status || 'ACTIVE').toLowerCase(),
+    mobile: user.mobile || '',
+    language: user.language || 'English',
+    organization: user.organization || '',
+    createdAt: user.createdAt || '',
+  };
 }
 
-export async function updateUser(id, d, currentUserId) {
-  const users = allRaw();
-  const cur = users.find((u) => u.id === id);
-  if (!cur) throw new Error('User not found.');
-  check({ ...cur, ...d }, users, id);
-  if (id === currentUserId && d.role && d.role !== cur.role) throw new Error('You cannot change your own role.');
-  if (cur.role === 'admin' && d.role && d.role !== 'admin' && users.filter((u) => u.role === 'admin').length <= 1)
-    throw new Error('The last Admin cannot be demoted.');
-  const upd = { ...cur, ...d, email: (d.email ?? cur.email).trim().toLowerCase() };
-  delete upd.password;
-  saveRaw(users.map((u) => (u.id === id ? upd : u)));
-  return strip(upd);
+
+/**
+ * Update user details through Spring Boot and MySQL.
+ * Backend endpoint: PUT /api/admin/users/{id}
+ */
+export async function updateUser(id, data, currentUserId) {
+  if (String(id) === String(currentUserId) && data.role) {
+    throw new Error('You cannot change your own role.');
+  }
+
+  const token = getToken();
+
+  if (!token) {
+    throw new Error('Your session has expired. Please log in again.');
+  }
+
+  const updatedUser = await request(`/api/admin/users/${id}`, {
+    method: 'PUT',
+    token,
+    body: {
+      name: data.name?.trim(),
+      email: data.email?.trim().toLowerCase(),
+      mobile: data.mobile?.trim() || '',
+      language: data.language?.trim() || 'English',
+    },
+  });
+
+  return {
+    ...updatedUser,
+    role: (updatedUser.role || '').toLowerCase().replace(/-/g, '_'),
+    status: (updatedUser.status || 'ACTIVE').toLowerCase(),
+    mobile: updatedUser.mobile || '',
+    language: updatedUser.language || 'English',
+    organization: updatedUser.organization || '',
+    createdAt: updatedUser.createdAt || '',
+  };
 }
 
+/**
+ * Activate or deactivate a user through Spring Boot.
+ * Backend endpoint: PATCH /api/admin/users/{id}/status
+ */
 export async function setStatus(id, status, currentUserId) {
-  if (id === currentUserId) throw new Error('You cannot change the status of your own account.');
-  const users = allRaw();
-  const cur = users.find((u) => u.id === id);
-  if (!cur) throw new Error('User not found.');
-  if (cur.role === 'admin' && status !== 'active' && users.filter((u) => u.role === 'admin' && u.status === 'active').length <= 1)
-    throw new Error('At least one active Admin must remain.');
-  saveRaw(users.map((u) => (u.id === id ? { ...u, status } : u)));
+  if (String(id) === String(currentUserId)) {
+    throw new Error('You cannot change your own account status.');
+  }
+
+  const token = getToken();
+
+  if (!token) {
+    throw new Error('Your session has expired. Please log in again.');
+  }
+
+  await request(`/api/admin/users/${id}/status`, {
+    method: 'PATCH',
+    token,
+    body: {
+      status: status.toUpperCase(),
+    },
+  });
 }
 
+/**
+ * Delete a user through Spring Boot and MySQL.
+ * Backend endpoint: DELETE /api/admin/users/{id}
+ */
 export async function deleteUser(id, currentUserId) {
-  if (id === currentUserId) throw new Error('You cannot delete your own account.');
-  const users = allRaw();
-  const cur = users.find((u) => u.id === id);
-  if (!cur) throw new Error('User not found.');
-  if (cur.role === 'admin' && users.filter((u) => u.role === 'admin').length <= 1) throw new Error('The last Admin cannot be deleted.');
-  saveRaw(users.filter((u) => u.id !== id));
+  if (String(id) === String(currentUserId)) {
+    throw new Error('You cannot delete your own account.');
+  }
+
+  const token = getToken();
+
+  if (!token) {
+    throw new Error('Your session has expired. Please log in again.');
+  }
+
+  await request(`/api/admin/users/${id}`, {
+    method: 'DELETE',
+    token,
+  });
 }
+
+  
+/**
+ * Update the currently logged-in user's profile through Spring Boot.
+ * The backend verifies the session token and saves changes in MySQL.
+ */
+export async function updateMyProfile({ name, mobile }) {
+  const token = getToken();
+
+  if (!token) {
+    throw new Error('Your session has expired. Please log in again.');
+  }
+
+  // Call the authenticated backend profile endpoint.
+  const updatedProfile = await request('/api/profile', {
+    method: 'PUT',
+    token,
+    body: {
+      name: name.trim(),
+      mobile: mobile?.trim() || ''
+    }
+  });
+
+  return updatedProfile;
+}
+
+// Fetch the latest profile from the backend.
+export async function getMyProfile() {
+  const token = getToken();
+
+  if (!token) {
+    throw new Error('Your session has expired. Please log in again.');
+  }
+
+  return request('/api/profile', {
+    method: 'GET',
+    token
+  });
+}
+
+

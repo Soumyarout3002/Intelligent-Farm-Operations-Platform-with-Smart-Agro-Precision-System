@@ -1,55 +1,145 @@
-// DEMO auth (frontend only). Backend: POST /auth/login, /auth/register, /auth/logout, /auth/forgot-password.
-// Real auth must use server-side hashing + secure tokens/cookies.
+
 import { read, write, remove } from '../utils/storage';
-import { allRaw, saveRaw, makeUser, hashPassword, strip } from './userService';
-import { createFarm } from './farmService';
-import { isEmail } from '../utils/validation';
+import { request } from './api';
 
 const SESSION_KEY = 'fvn_session';
 const REMEMBER_KEY = 'fvn_remember_email';
-export const ADMIN_DEMO_CODE = 'FARMVERSE-ADMIN-2026';
 
+// Read the email saved by the Remember Me option.
 export const getRememberedEmail = () => read(REMEMBER_KEY, '');
 
-export async function login({ email, password, remember }) {
-  const user = allRaw().find((u) => u.email === (email || '').trim().toLowerCase());
-  const ok = user && (await hashPassword(password, user.salt)) === user.passwordHash;
-  if (!ok) throw new Error('Invalid email or password.');
-  if (user.status !== 'active') throw new Error(`Your account is ${user.status}. Contact an Admin.`);
-  // Only the user id is stored (never the password). sessionStorage unless "Remember me".
-  write(SESSION_KEY, { id: user.id }, remember ? localStorage : sessionStorage);
-  if (remember) write(REMEMBER_KEY, user.email); else remove(REMEMBER_KEY);
-  return strip(user);
-}
+// Store the authenticated user and token together in the browser session.
+function saveSession(user, token, remember) {
+  const storage = remember ? localStorage : sessionStorage;
 
-export function getSession() {
-  const s = read(SESSION_KEY, null, sessionStorage) || read(SESSION_KEY, null, localStorage);
-  const user = s && allRaw().find((u) => u.id === s.id);
-  return user && user.status === 'active' ? strip(user) : null;
-}
+  // Normalize role casing because the frontend permission map uses lowercase roles.
+  const normalizedUser = {
+    ...user,
+    role: user.role?.toLowerCase(),
+  };
 
-export function logout() {
-  remove(SESSION_KEY, sessionStorage);
-  remove(SESSION_KEY, localStorage);
-}
+  // The token is needed for future protected backend API requests.
+  write(SESSION_KEY, { user: normalizedUser, token }, storage);
 
-export async function register(role, d) {
-  const users = allRaw();
-  if (users.some((u) => u.email === d.email.trim().toLowerCase())) throw new Error('This email is already registered.');
-  if (role === 'admin' && (d.adminCode || '').trim() !== ADMIN_DEMO_CODE) throw new Error('Invalid admin invitation code.');
-  // eslint-disable-next-line no-unused-vars
-  const { confirmPassword, terms, adminCode, farmName, farmLocation, farmArea, farmUnit, primaryCrop, ...rest } = d;
-  const user = await makeUser({ ...rest, name: d.name.trim(), email: d.email.trim().toLowerCase(), role,
-    ...(role === 'farmer' ? { organization: farmName } : {}) });
-  saveRaw([...users, user]);
-  if (role === 'farmer') {
-    await createFarm({ name: farmName, location: farmLocation, area: farmArea, unit: farmUnit, soil: 'Loamy',
-      crop: primaryCrop, plots: 1, status: 'active', notes: 'Created during registration.' }).catch(() => {});
+  if (remember) {
+    write(REMEMBER_KEY, user.email);
+  } else {
+    remove(REMEMBER_KEY);
   }
-  return strip(user);
+
+  return normalizedUser;
 }
 
-export async function requestPasswordReset(email) {
-  if (!isEmail(email)) throw new Error('Enter a valid email address.');
-  return 'Demo only: no email was sent. Real password reset requires backend integration.';
+// Log in through the Spring Boot backend.
+export async function login({ email, password, remember }) {
+  const response = await request('/api/auth/login', {
+    method: 'POST',
+    body: {
+      email: email.trim().toLowerCase(),
+      password,
+    },
+  });
+
+  // Do not create a local session unless the backend returns a token.
+  if (!response.token) {
+    throw new Error('Login response did not contain an authentication token.');
+  }
+
+  return saveSession(response, response.token, remember);
 }
+
+// Restore the user when the application reloads.
+export function getSession() {
+  const session =
+    read(SESSION_KEY, null, sessionStorage) ||
+    read(SESSION_KEY, null, localStorage);
+
+  return session?.user || null;
+}
+
+// Retrieve the token for authenticated API calls.
+export function getToken() {
+  const session =
+    read(SESSION_KEY, null, sessionStorage) ||
+    read(SESSION_KEY, null, localStorage);
+
+  return session?.token || null;
+}
+
+/**
+ * Keep the saved browser session synchronized with the latest backend profile.
+ */
+export function updateSessionUser(profile) {
+  for (const storage of [sessionStorage, localStorage]) {
+    const session = read(SESSION_KEY, null, storage);
+
+    if (session?.token) {
+      write(
+        SESSION_KEY,
+        {
+          ...session,
+          user: {
+            ...session.user,
+            ...profile,
+            role: profile.role?.toLowerCase() ?? session.user?.role,
+          },
+        },
+        storage
+      );
+    }
+  }
+}
+
+
+// End the backend session, then clear the local session even if the request fails.
+export async function logout() {
+  const token = getToken();
+
+  try {
+    if (token) {
+      await request('/api/auth/logout', {
+        method: 'POST',
+        token,
+      });
+    }
+  } finally {
+    // Remove both copies so a remembered session cannot remain active locally.
+    remove(SESSION_KEY, sessionStorage);
+    remove(SESSION_KEY, localStorage);
+  }
+}
+
+// Register a new account through the backend.
+export async function register(role, data) {
+  const normalizedRole = role.toUpperCase();
+
+  // Public registration must never create an Admin account.
+  if (normalizedRole === 'ADMIN') {
+    throw new Error(
+      'Admin accounts must be created through an authorized process.'
+    );
+  }
+
+  return request('/api/auth/register', {
+    method: 'POST',
+    body: {
+      name: data.name?.trim(),
+      email: data.email?.trim().toLowerCase(),
+      password: data.password,
+      role: normalizedRole,
+      mobile: data.mobile || null,
+      language: data.language || 'English',
+    },
+  });
+}
+
+// Password reset is not implemented by the backend yet.
+export async function requestPasswordReset(email) {
+  if (!email?.trim()) {
+    throw new Error('Email is required.');
+  }
+
+  throw new Error('Password reset is not connected to the backend yet.');
+}
+
+
