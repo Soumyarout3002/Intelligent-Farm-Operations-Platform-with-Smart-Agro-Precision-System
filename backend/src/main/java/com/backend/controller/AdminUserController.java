@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import com.backend.repository.AuthSessionRepository;
+import com.backend.service.ActivityLogService;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,15 +32,18 @@ public class AdminUserController {
     private final UserRepository userRepository;
     private final AuthService authService;
     private final AuthSessionRepository authSessionRepository;
+    private final ActivityLogService activityLogService;
 
     public AdminUserController(
         UserRepository userRepository,
         AuthService authService,
-        AuthSessionRepository authSessionRepository) {
+        AuthSessionRepository authSessionRepository,
+        ActivityLogService activityLogService) {
 
     this.userRepository = userRepository;
     this.authService = authService;
     this.authSessionRepository = authSessionRepository;
+    this.activityLogService = activityLogService;
 }
 
     // GET /api/admin/users - list all users.
@@ -66,18 +70,40 @@ public class AdminUserController {
     // POST /api/admin/users - create a Farmer or Field Worker.
     // AuthService performs duplicate checks and BCrypt password hashing.
     @PostMapping
-    public ResponseEntity<?> createUser(
-            @Valid @RequestBody RegisterRequest request) {
-        try {
-            User user = authService.register(request);
+@Transactional
+public ResponseEntity<?> createUser(
+        @Valid @RequestBody RegisterRequest request,
+        HttpServletRequest httpRequest) {
 
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(toUserResponse(user));
-        } catch (IllegalArgumentException ex) {
-            return error(HttpStatus.BAD_REQUEST, ex.getMessage());
-        }
+    try {
+        User user = authService.register(request);
+
+        User actor = getAuthenticatedUser(httpRequest);
+
+        Map<String, Object> newValues = new LinkedHashMap<>();
+        newValues.put("name", user.getName());
+        newValues.put("email", user.getEmail());
+        newValues.put("role", user.getRole());
+        newValues.put("status", user.getStatus());
+
+        activityLogService.logActivity(
+                actor,
+                "USER_CREATED",
+                "USER",
+                user.getId().toString(),
+                "Admin created a new user.",
+                null,
+                newValues,
+                httpRequest
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(toUserResponse(user));
+
+    } catch (IllegalArgumentException ex) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
-
+}
     // Fields that Admin can update without changing a user's role.
     public record UpdateUserRequest(
             @NotBlank(message = "Name is required.")
@@ -101,42 +127,65 @@ public class AdminUserController {
 
     // PUT /api/admin/users/{id} - update user details.
     @PutMapping("/{id}")
-    @Transactional
-    public ResponseEntity<?> updateUser(
-            @PathVariable Long id,
-            @Valid @RequestBody UpdateUserRequest request) {
+@Transactional
+public ResponseEntity<?> updateUser(
+        @PathVariable Long id,
+        @Valid @RequestBody UpdateUserRequest request,
+        HttpServletRequest httpRequest) {
 
-        User user = userRepository.findById(id).orElse(null);
+    User user = userRepository.findById(id).orElse(null);
 
-        if (user == null) {
-            return error(HttpStatus.NOT_FOUND, "User not found.");
-        }
-
-        String email = request.email().trim().toLowerCase(Locale.ROOT);
-
-        boolean emailUsed = userRepository.findByEmailIgnoreCase(email)
-                .filter(existing -> !existing.getId().equals(id))
-                .isPresent();
-
-        if (emailUsed) {
-            return error(
-                    HttpStatus.CONFLICT,
-                    "This email is already registered.");
-        }
-
-        user.setName(request.name().trim());
-        user.setEmail(email);
-        user.setMobile(
-                request.mobile() == null || request.mobile().isBlank()
-                        ? null : request.mobile().trim());
-        user.setLanguage(
-                request.language() == null || request.language().isBlank()
-                        ? "English" : request.language().trim());
-
-        return ResponseEntity.ok(
-                toUserResponse(userRepository.save(user)));
+    if (user == null) {
+        return error(HttpStatus.NOT_FOUND, "User not found.");
     }
 
+    String email = request.email().trim().toLowerCase(Locale.ROOT);
+
+    boolean emailUsed = userRepository.findByEmailIgnoreCase(email)
+            .filter(existing -> !existing.getId().equals(id))
+            .isPresent();
+
+    if (emailUsed) {
+        return error(HttpStatus.CONFLICT,
+                "This email is already registered.");
+    }
+
+    Map<String, Object> oldValues = new LinkedHashMap<>();
+    oldValues.put("name", user.getName());
+    oldValues.put("email", user.getEmail());
+    oldValues.put("mobile", user.getMobile());
+    oldValues.put("language", user.getLanguage());
+
+    user.setName(request.name().trim());
+    user.setEmail(email);
+    user.setMobile(
+            request.mobile() == null || request.mobile().isBlank()
+                    ? null : request.mobile().trim());
+    user.setLanguage(
+            request.language() == null || request.language().isBlank()
+                    ? "English" : request.language().trim());
+
+    User updatedUser = userRepository.save(user);
+
+    Map<String, Object> newValues = new LinkedHashMap<>();
+    newValues.put("name", updatedUser.getName());
+    newValues.put("email", updatedUser.getEmail());
+    newValues.put("mobile", updatedUser.getMobile());
+    newValues.put("language", updatedUser.getLanguage());
+
+    activityLogService.logActivity(
+            getAuthenticatedUser(httpRequest),
+            "USER_UPDATED",
+            "USER",
+            updatedUser.getId().toString(),
+            "Admin updated user details.",
+            oldValues,
+            newValues,
+            httpRequest
+    );
+
+    return ResponseEntity.ok(toUserResponse(updatedUser));
+}
     public record UpdateStatusRequest(
             @NotBlank(message = "Status is required.")
             String status
@@ -144,56 +193,79 @@ public class AdminUserController {
 
     // PATCH /api/admin/users/{id}/status - activate/deactivate a user.
     @PatchMapping("/{id}/status")
-    @Transactional
-    public ResponseEntity<?> updateStatus(
-            @PathVariable Long id,
-            @Valid @RequestBody UpdateStatusRequest request,
-            HttpServletRequest httpRequest) {
+@Transactional
+public ResponseEntity<?> updateStatus(
+        @PathVariable Long id,
+        @Valid @RequestBody UpdateStatusRequest request,
+        HttpServletRequest httpRequest) {
 
-        User user = userRepository.findById(id).orElse(null);
+    User user = userRepository.findById(id).orElse(null);
 
-        if (user == null) {
-            return error(HttpStatus.NOT_FOUND, "User not found.");
-        }
-
-        String status = request.status().trim().toUpperCase(Locale.ROOT);
-
-        if (!status.equals("ACTIVE") && !status.equals("INACTIVE")) {
-            return error(
-                    HttpStatus.BAD_REQUEST,
-                    "Status must be ACTIVE or INACTIVE.");
-        }
-
-        User currentUser = getAuthenticatedUser(httpRequest);
-
-        if (currentUser != null && currentUser.getId().equals(id)) {
-            return error(
-                    HttpStatus.CONFLICT,
-                    "You cannot change your own account status.");
-        }
-
-        // Never deactivate the last active Admin.
-        if (user.getRole().equalsIgnoreCase("ADMIN")
-                && status.equals("INACTIVE")
-                && user.getStatus().equalsIgnoreCase("ACTIVE")) {
-
-            long activeAdmins = userRepository.findAll().stream()
-                    .filter(u -> "ADMIN".equalsIgnoreCase(u.getRole()))
-                    .filter(u -> "ACTIVE".equalsIgnoreCase(u.getStatus()))
-                    .count();
-
-            if (activeAdmins <= 1) {
-                return error(
-                        HttpStatus.CONFLICT,
-                        "At least one active Admin must remain.");
-            }
-        }
-
-        user.setStatus(status);
-        return ResponseEntity.ok(
-                toUserResponse(userRepository.save(user)));
+    if (user == null) {
+        return error(HttpStatus.NOT_FOUND, "User not found.");
     }
 
+    String status = request.status().trim().toUpperCase(Locale.ROOT);
+
+    if (!status.equals("ACTIVE") && !status.equals("INACTIVE")) {
+        return error(HttpStatus.BAD_REQUEST,
+                "Status must be ACTIVE or INACTIVE.");
+    }
+
+    User currentUser = getAuthenticatedUser(httpRequest);
+
+    if (currentUser != null && currentUser.getId().equals(id)) {
+        return error(HttpStatus.CONFLICT,
+                "You cannot change your own account status.");
+    }
+
+    if ("ADMIN".equalsIgnoreCase(user.getRole())
+            && status.equals("INACTIVE")
+            && "ACTIVE".equalsIgnoreCase(user.getStatus())) {
+
+        long activeAdmins = userRepository.findAll().stream()
+                .filter(u -> "ADMIN".equalsIgnoreCase(u.getRole()))
+                .filter(u -> "ACTIVE".equalsIgnoreCase(u.getStatus()))
+                .count();
+
+        if (activeAdmins <= 1) {
+            return error(HttpStatus.CONFLICT,
+                    "At least one active Admin must remain.");
+        }
+    }
+
+    String oldStatus = user.getStatus();
+
+    user.setStatus(status);
+    User updatedUser = userRepository.save(user);
+
+    if (oldStatus == null || !oldStatus.equalsIgnoreCase(status)) {
+
+        Map<String, Object> oldValues = new LinkedHashMap<>();
+        oldValues.put("status", oldStatus);
+
+        Map<String, Object> newValues = new LinkedHashMap<>();
+        newValues.put("status", status);
+
+        String actionType = status.equals("ACTIVE")
+                ? "USER_ACTIVATED"
+                : "USER_DEACTIVATED";
+
+        activityLogService.logActivity(
+                currentUser,
+                actionType,
+                "USER",
+                updatedUser.getId().toString(),
+                "Admin changed user status from "
+                        + oldStatus + " to " + status + ".",
+                oldValues,
+                newValues,
+                httpRequest
+        );
+    }
+
+    return ResponseEntity.ok(toUserResponse(updatedUser));
+}
     // DELETE /api/admin/users/{id} - delete a user.
     
 @DeleteMapping("/{id}")
@@ -229,6 +301,25 @@ public ResponseEntity<?> deleteUser(
                     "The last Admin cannot be deleted.");
         }
     }
+        // Capture deleted user's details before deletion.
+    Map<String, Object> oldValues = new LinkedHashMap<>();
+    oldValues.put("name", user.getName());
+    oldValues.put("email", user.getEmail());
+    oldValues.put("role", user.getRole());
+    oldValues.put("status", user.getStatus());
+
+    // Save activity history before deleting the user.
+    activityLogService.logActivity(
+            currentUser,
+            "USER_DELETED",
+            "USER",
+            user.getId().toString(),
+            "Admin deleted a user.",
+            oldValues,
+            null,
+            httpRequest
+    );
+    
 
     // Delete the user's sessions first to satisfy the foreign key.
     authSessionRepository.deleteAllByUser_Id(id);
