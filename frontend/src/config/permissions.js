@@ -1,12 +1,24 @@
 
-import { LayoutDashboard, Users, Tractor, UserCircle } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Tractor,
+  UserCircle,
+  History,
+} from 'lucide-react';
 
 // Frontend role permissions.
 // Real authorization is enforced by the Spring Boot backend.
 export const ROLE_PERMISSIONS = {
   farmer: ['overview', 'farms', 'profile'],
   field_worker: ['overview', 'farms', 'profile'],
-  admin: ['overview', 'users', 'farms', 'profile'],
+  admin: [
+    'overview',
+    'users',
+    'activity-history',
+    'farms',
+    'profile',
+  ],
 };
 
 // Navigation items available in the application.
@@ -23,6 +35,7 @@ export const NAV_ITEMS = [
     path: '/users',
     icon: Users,
   },
+  
   {
     key: 'farms',
     label: 'Farm Management',
