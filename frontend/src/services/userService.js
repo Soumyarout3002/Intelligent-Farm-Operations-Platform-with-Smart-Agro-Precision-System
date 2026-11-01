@@ -1,31 +1,122 @@
-// DEMO user store (LocalStorage). Backend: GET/POST /users, GET/PUT/DELETE /users/:id, PATCH /users/:id/status
+
 import { read, write } from '../utils/storage';
 import { isEmail, isMobile } from '../utils/validation';
 import { request } from './api';
 import { getToken } from './authService';
 
+// DEMO user store using LocalStorage.
+// Real applications must enforce authentication and
+// authorization through a secure backend.
+
 const KEY = 'fvn_users';
-export const strip = ({ passwordHash, salt, ...u }) => u;
 
+// Convert the old Manager role to Field Worker
+const normalizeRole = (role) =>
+  role === 'manager' ? 'fieldWorker' : role;
+
+// Remove password information before exposing user data
+export const strip = ({ passwordHash, salt, ...user }) => ({
+  ...user,
+  role: normalizeRole(user.role)
+});
+
+// Demo password hashing
 export async function hashPassword(password, salt) {
-  // Demo only: salted SHA-256 via Web Crypto. Real systems must hash server-side (bcrypt/argon2).
-  const data = new TextEncoder().encode(`${salt}:${password}`);
-  const buf = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  const data = new TextEncoder().encode(
+    `${salt}:${password}`
+  );
+
+  const buffer = await crypto.subtle.digest(
+    'SHA-256',
+    data
+  );
+
+  return Array.from(new Uint8Array(buffer))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
 }
-const newSalt = () => Array.from(crypto.getRandomValues(new Uint8Array(8))).map((b) => b.toString(16).padStart(2, '0')).join('');
-const newId = () => `U-${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
 
-export const allRaw = () => { const u = read(KEY, []); return Array.isArray(u) ? u : []; };
-export const saveRaw = (u) => write(KEY, u);
+// Generate a random salt
+const newSalt = () =>
+  Array.from(crypto.getRandomValues(new Uint8Array(8)))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
 
+// Generate a unique user ID
+const newId = () =>
+  `U-${Date.now().toString(36)}${Math.floor(
+    Math.random() * 1000
+  )}`;
+
+// Read users and automatically migrate old Manager accounts
+export const allRaw = () => {
+  const stored = read(KEY, []);
+
+  if (!Array.isArray(stored)) {
+    return [];
+  }
+
+  let changed = false;
+
+  const updatedUsers = stored.map((user) => {
+    const updated = { ...user };
+
+    if (updated.role === 'manager') {
+      updated.role = 'fieldWorker';
+      changed = true;
+    }
+
+    // Rename only the original demo account
+    if (
+      updated.name === 'Demo Manager' &&
+      updated.email === 'manager@farmverse.demo'
+    ) {
+      updated.name = 'Demo Field Worker';
+      changed = true;
+    }
+
+    return updated;
+  });
+
+  if (changed) {
+    write(KEY, updatedUsers);
+  }
+
+  return updatedUsers;
+};
+
+// Save user records
+export const saveRaw = (users) => {
+  write(
+    KEY,
+    users.map((user) => ({
+      ...user,
+      role: normalizeRole(user.role)
+    }))
+  );
+};
+
+// Create a new user
 export async function makeUser({ password, ...rest }) {
   const salt = newSalt();
-  return { id: newId(), status: 'active', createdAt: new Date().toISOString(), ...rest, salt, passwordHash: await hashPassword(password, salt) };
+
+  return {
+    id: newId(),
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    ...rest,
+    role: normalizeRole(rest.role),
+    salt,
+    passwordHash: await hashPassword(password, salt)
+  };
 }
 
+// Seed demo users only when storage is empty
 export async function seedUsers() {
-  if (allRaw().length) return;
+  if (allRaw().length) {
+    return;
+  }
+
   const seed = [
     { name: 'Demo Admin', email: 'admin@farmverse.demo', mobile: '9000000001', role: 'admin', organization: 'FarmVerse Nexus', password: 'Admin@123' },
     {
@@ -40,7 +131,12 @@ export async function seedUsers() {
 },
     { name: 'Demo Farmer', email: 'farmer@farmverse.demo', mobile: '9000000003', role: 'farmer', organization: 'Sunrise Farm', language: 'English', password: 'Farmer@123' },
   ];
-  saveRaw(await Promise.all(seed.map(makeUser)));
+
+  const createdUsers = await Promise.all(
+    seed.map(makeUser)
+  );
+
+  saveRaw(createdUsers);
 }
 
 export async function listUsers() {
@@ -64,12 +160,18 @@ export async function listUsers() {
 }
 export const getUser = async (id) => { const u = allRaw().find((x) => x.id === id); return u ? strip(u) : null; };
 
-function check(d, users, ignoreId) {
-  if (!d.name?.trim()) throw new Error('Name is required.');
-  if (!isEmail(d.email)) throw new Error('Enter a valid email address.');
-  if (d.mobile && !isMobile(d.mobile)) throw new Error('Enter a valid mobile number.');
-  if (users.some((u) => u.id !== ignoreId && u.email.toLowerCase() === d.email.trim().toLowerCase()))
-    throw new Error('A user with this email already exists.');
+  if (
+    users.some(
+      (user) =>
+        user.id !== ignoreId &&
+        user.email.toLowerCase() ===
+          data.email.trim().toLowerCase()
+    )
+  ) {
+    throw new Error(
+      'A user with this email already exists.'
+    );
+  }
 }
 
 export async function createUser(data) {
