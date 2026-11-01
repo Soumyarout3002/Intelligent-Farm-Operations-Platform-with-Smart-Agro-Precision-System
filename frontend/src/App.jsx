@@ -1,3 +1,7 @@
+import FarmResourcePlanning from './pages/FarmResourcePlanning';
+import EquipmentBookings from './pages/EquipmentBookings';
+import EquipmentManagement from './pages/EquipmentManagement';
+import InventoryManagement from "./pages/InventoryManagement";
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { can } from './config/permissions';
@@ -33,6 +37,38 @@ export default function App() {
         <Route path="/farms" element={<Guard perm="farms"><FarmManagement /></Guard>} />
         <Route path="/farms/:id" element={<Guard perm="farms"><FarmDetails /></Guard>} />
         <Route path="/profile" element={<Guard perm="profile"><Profile /></Guard>} />
+      <Route
+  path="/inventory"
+  element={
+    <Guard perm="inventory">
+      <InventoryManagement />
+    </Guard>
+  }
+/>
+<Route
+  path="/equipment"
+  element={
+    <Guard perm="equipment">
+      <EquipmentManagement />
+    </Guard>
+  }
+/>
+<Route
+  path="/equipment/bookings"
+  element={
+    <Guard perm="equipment">
+      <EquipmentBookings />
+    </Guard>
+  }
+/>
+<Route
+  path="/resources"
+  element={
+    <Guard perm="resources">
+      <FarmResourcePlanning />
+    </Guard>
+  }
+/>
       </Route>
       <Route path="/" element={<Navigate to="/overview" replace />} />
       <Route path="*" element={<Navigate to="/overview" replace />} />
