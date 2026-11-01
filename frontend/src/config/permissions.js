@@ -1,4 +1,3 @@
-
 import {
   LayoutDashboard,
   Users,
@@ -22,7 +21,7 @@ export const ROLE_PERMISSIONS = {
     'resources'
   ],
 
-  fieldWorker: [
+  field_worker: [
     'overview',
     'farms',
     'profile',
@@ -44,17 +43,18 @@ export const ROLE_PERMISSIONS = {
 };
 
 // Sidebar navigation
-
-
+export const NAV_ITEMS = [
+  {
+    key: 'overview',
+    label: 'Overview',
+    path: '/overview',
     icon: LayoutDashboard
-    icon: LayoutDashboard,
   },
   {
     key: 'users',
     label: 'User & Access Management',
     path: '/users',
     icon: Users
-    icon: Users,
   },
   {
     key: 'farms',
@@ -85,7 +85,6 @@ export const ROLE_PERMISSIONS = {
     label: 'Farm Resource Planning',
     path: '/resources',
     icon: ClipboardList
-    icon: Tractor,
   },
   {
     key: 'profile',
@@ -95,38 +94,23 @@ export const ROLE_PERMISSIONS = {
   }
 ];
 
-// Permission checking
-export const can = (role, key) =>
-  (ROLE_PERMISSIONS[role] || []).includes(key);
-
-// Available roles
-export const ROLES = ['farmer', 'fieldWorker', 'admin'];
-
-// Capitalize text
-export const cap = (s = '') =>
-  s.charAt(0).toUpperCase() + s.slice(1);
-
-// Display-friendly role names
-export const roleLabel = (role) => {
-  if (role === 'fieldWorker') return 'Field Worker';
-  return cap(role);
-};
-    icon: UserCircle,
-  },
-];
-
 // Normalize backend roles such as FIELD_WORKER for frontend use.
 export const normalizeRole = (role = '') =>
   role.toLowerCase().replace(/-/g, '_');
 
+// Permission checking
 export const can = (role, key) =>
   (ROLE_PERMISSIONS[normalizeRole(role)] || []).includes(key);
 
 // Only the documented project roles are available.
 export const ROLES = ['farmer', 'field_worker', 'admin'];
 
+// Capitalize text: "field_worker" -> "Field Worker"
 export const cap = (value = '') =>
   value
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+
+// Display-friendly role names
+export const roleLabel = (role) => cap(normalizeRole(role));
