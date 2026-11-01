@@ -16,6 +16,7 @@ import FarmManagement from './pages/FarmManagement';
 import FarmDetails from './pages/FarmDetails';
 import Profile from './pages/Profile';
 import AccessDenied from './pages/AccessDenied';
+import ActivityHistory from './pages/ActivityHistory';
 
 function Guard({ perm, children }) {
   const { user } = useAuth();
@@ -77,6 +78,14 @@ export default function App() {
       </Route>
       <Route path="/" element={<Navigate to="/overview" replace />} />
       <Route path="*" element={<Navigate to="/overview" replace />} />
+      <Route
+        path="/activity-history"
+        element={
+          <Guard perm="users">
+            <ActivityHistory />
+          </Guard>
+        }
+      />
     </Routes>
   );
 }

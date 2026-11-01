@@ -1,3 +1,4 @@
+
 import {
   LayoutDashboard,
   Users,
@@ -6,10 +7,11 @@ import {
   Package,
   Wrench,
   CalendarDays,
-  ClipboardList
+  ClipboardList,
 } from 'lucide-react';
 
-// Role-based permissions
+// Frontend role permissions.
+// Real authorization is enforced by the Spring Boot backend.
 export const ROLE_PERMISSIONS = {
   farmer: [
     'overview',
@@ -18,7 +20,7 @@ export const ROLE_PERMISSIONS = {
     'inventory',
     'equipment',
     'equipmentBookings',
-    'resources'
+    'resources',
   ],
 
   field_worker: [
@@ -27,71 +29,74 @@ export const ROLE_PERMISSIONS = {
     'profile',
     'equipment',
     'equipmentBookings',
-    'resources'
+    'resources',
   ],
 
   admin: [
     'overview',
     'users',
+    'activity-history',
     'farms',
     'profile',
     'inventory',
     'equipment',
     'equipmentBookings',
-    'resources'
-  ]
+    'resources',
+  ],
 };
 
 // Sidebar navigation
+// Activity History intentionally does not appear in the sidebar.
+// It is accessible through the Dashboard's "View all" link.
 export const NAV_ITEMS = [
   {
     key: 'overview',
     label: 'Overview',
     path: '/overview',
-    icon: LayoutDashboard
+    icon: LayoutDashboard,
   },
   {
     key: 'users',
     label: 'User & Access Management',
     path: '/users',
-    icon: Users
+    icon: Users,
   },
   {
     key: 'farms',
     label: 'Farm Management',
     path: '/farms',
-    icon: Tractor
+    icon: Tractor,
   },
   {
     key: 'inventory',
     label: 'Inventory Management',
     path: '/inventory',
-    icon: Package
+    icon: Package,
   },
   {
     key: 'equipment',
     label: 'Equipment Management',
     path: '/equipment',
-    icon: Wrench
+    icon: Wrench,
   },
   {
     key: 'equipmentBookings',
     label: 'Equipment Bookings',
     path: '/equipment/bookings',
-    icon: CalendarDays
+    icon: CalendarDays,
   },
   {
     key: 'resources',
     label: 'Farm Resource Planning',
     path: '/resources',
-    icon: ClipboardList
+    icon: ClipboardList,
   },
   {
     key: 'profile',
     label: 'User Profile',
     path: '/profile',
-    icon: UserCircle
-  }
+    icon: UserCircle,
+  },
 ];
 
 // Normalize backend roles such as FIELD_WORKER for frontend use.
