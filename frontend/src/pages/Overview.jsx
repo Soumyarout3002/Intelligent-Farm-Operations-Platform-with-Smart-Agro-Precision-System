@@ -52,7 +52,7 @@ export default function Overview() {
     ...(isAdmin ? [{ label: 'Users', value: users.length, icon: Users }] : []),
   ];
   const tasksDone = Object.values(done).filter(Boolean).length;
-  const roleCounts = ['farmer', 'manager', 'admin'].map((r) => [cap(r), users.filter((u) => u.role === r).length]);
+  const roleCounts = ['farmer', 'field_worker', 'admin'].map((r) => [cap(r), users.filter((u) => u.role === r).length]);
   const statusCls = { active: 'teal', inactive: 'red', fallow: 'amber' };
 
   return (

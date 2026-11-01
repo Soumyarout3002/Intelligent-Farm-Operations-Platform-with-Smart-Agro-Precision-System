@@ -1,13 +1,7 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  Tractor,
-  HardHat,
-  ShieldCheck,
-  ArrowLeft
-} from 'lucide-react';
-
+import { Tractor, HardHat, ShieldCheck, ArrowLeft } from 'lucide-react';
 import AuthShell from './AuthShell';
 import Field from '../../components/Field';
 import { useAuth } from '../../context/AuthContext';
@@ -111,34 +105,39 @@ const ROLE_CONFIG = {
       terms
     ]
   },
-
-  fieldWorker: {
-    title: 'Field Worker',
-    icon: HardHat,
-    desc: 'View assigned farm tasks, attendance and equipment information.',
-    fields: [
-      ...base,
-      mobile,
-      ...pw,
-      {
-        name: 'organization',
-        label: 'Organization or farm name',
-        required: true
-      },
-      {
-        name: 'assignedFarm',
-        label: 'Assigned farm or location',
-        required: true
-      },
-      {
-        name: 'designation',
-        label: 'Designation',
-        required: true
-      },
-      terms
-    ]
-  },
-
+  field_worker: {
+  title: 'Field Worker',
+  icon: HardHat,
+  desc: 'Carry out assigned farm operations and field tasks.',
+  fields: [
+    ...base,
+    mobile,
+    ...pw,
+    {
+      name: 'organization',
+      label: 'Organization or farm name',
+      required: true,
+    },
+    {
+      name: 'assignedFarm',
+      label: 'Assigned farm or location',
+      required: true,
+    },
+    {
+      name: 'designation',
+      label: 'Designation',
+      required: true,
+    },
+    {
+      name: 'language',
+      label: 'Preferred language',
+      type: 'select',
+      options: ['English', 'Hindi', 'Kannada', 'Tamil', 'Telugu', 'Marathi'],
+      required: true,
+    },
+    terms,
+  ],
+},
   admin: {
     title: 'Admin',
     icon: ShieldCheck,

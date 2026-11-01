@@ -44,18 +44,17 @@ export const ROLE_PERMISSIONS = {
 };
 
 // Sidebar navigation
-export const NAV_ITEMS = [
-  {
-    key: 'overview',
-    label: 'Overview',
-    path: '/overview',
+
+
     icon: LayoutDashboard
+    icon: LayoutDashboard,
   },
   {
     key: 'users',
     label: 'User & Access Management',
     path: '/users',
     icon: Users
+    icon: Users,
   },
   {
     key: 'farms',
@@ -86,6 +85,7 @@ export const NAV_ITEMS = [
     label: 'Farm Resource Planning',
     path: '/resources',
     icon: ClipboardList
+    icon: Tractor,
   },
   {
     key: 'profile',
@@ -111,3 +111,22 @@ export const roleLabel = (role) => {
   if (role === 'fieldWorker') return 'Field Worker';
   return cap(role);
 };
+    icon: UserCircle,
+  },
+];
+
+// Normalize backend roles such as FIELD_WORKER for frontend use.
+export const normalizeRole = (role = '') =>
+  role.toLowerCase().replace(/-/g, '_');
+
+export const can = (role, key) =>
+  (ROLE_PERMISSIONS[normalizeRole(role)] || []).includes(key);
+
+// Only the documented project roles are available.
+export const ROLES = ['farmer', 'field_worker', 'admin'];
+
+export const cap = (value = '') =>
+  value
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');

@@ -11,7 +11,7 @@ import { isEmail } from '../../utils/validation';
 // Demo login accounts
 const DEMO = [
   ['Admin', 'admin@farmverse.demo', 'Admin@123'],
-  ['Field Worker', 'manager@farmverse.demo', 'Manager@123'],
+  ['Field Worker', 'fieldworker@farmverse.demo', 'FieldWorker@123'],
   ['Farmer', 'farmer@farmverse.demo', 'Farmer@123'],
 ];
 
