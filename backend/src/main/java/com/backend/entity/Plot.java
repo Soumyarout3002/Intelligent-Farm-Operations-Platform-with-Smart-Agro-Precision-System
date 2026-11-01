@@ -50,6 +50,9 @@ public class Plot {
     @JoinColumn(name = "farm_id", nullable = false)
     private Farm farm;
 
+    @Column(columnDefinition = "LONGTEXT")
+    private String boundaryGeoJson;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
