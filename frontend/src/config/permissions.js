@@ -4,24 +4,50 @@ import {
   Users,
   Tractor,
   UserCircle,
-  History,
+  Package,
+  Wrench,
+  CalendarDays,
+  ClipboardList,
 } from 'lucide-react';
 
 // Frontend role permissions.
 // Real authorization is enforced by the Spring Boot backend.
 export const ROLE_PERMISSIONS = {
-  farmer: ['overview', 'farms', 'profile'],
-  field_worker: ['overview', 'farms', 'profile'],
+  farmer: [
+    'overview',
+    'farms',
+    'profile',
+    'inventory',
+    'equipment',
+    'equipmentBookings',
+    'resources',
+  ],
+
+  field_worker: [
+    'overview',
+    'farms',
+    'profile',
+    'equipment',
+    'equipmentBookings',
+    'resources',
+  ],
+
   admin: [
     'overview',
     'users',
     'activity-history',
     'farms',
     'profile',
+    'inventory',
+    'equipment',
+    'equipmentBookings',
+    'resources',
   ],
 };
 
-// Navigation items available in the application.
+// Sidebar navigation
+// Activity History intentionally does not appear in the sidebar.
+// It is accessible through the Dashboard's "View all" link.
 export const NAV_ITEMS = [
   {
     key: 'overview',
@@ -35,12 +61,35 @@ export const NAV_ITEMS = [
     path: '/users',
     icon: Users,
   },
-  
   {
     key: 'farms',
     label: 'Farm Management',
     path: '/farms',
     icon: Tractor,
+  },
+  {
+    key: 'inventory',
+    label: 'Inventory Management',
+    path: '/inventory',
+    icon: Package,
+  },
+  {
+    key: 'equipment',
+    label: 'Equipment Management',
+    path: '/equipment',
+    icon: Wrench,
+  },
+  {
+    key: 'equipmentBookings',
+    label: 'Equipment Bookings',
+    path: '/equipment/bookings',
+    icon: CalendarDays,
+  },
+  {
+    key: 'resources',
+    label: 'Farm Resource Planning',
+    path: '/resources',
+    icon: ClipboardList,
   },
   {
     key: 'profile',
@@ -54,14 +103,19 @@ export const NAV_ITEMS = [
 export const normalizeRole = (role = '') =>
   role.toLowerCase().replace(/-/g, '_');
 
+// Permission checking
 export const can = (role, key) =>
   (ROLE_PERMISSIONS[normalizeRole(role)] || []).includes(key);
 
 // Only the documented project roles are available.
 export const ROLES = ['farmer', 'field_worker', 'admin'];
 
+// Capitalize text: "field_worker" -> "Field Worker"
 export const cap = (value = '') =>
   value
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+
+// Display-friendly role names
+export const roleLabel = (role) => cap(normalizeRole(role));
