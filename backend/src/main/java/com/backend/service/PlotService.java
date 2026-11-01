@@ -1,8 +1,8 @@
 
 package com.backend.service;
 
-import com.backend.dto.PlotRequest;
-import com.backend.dto.PlotResponse;
+import com.backend.dto.farm.PlotRequest;
+import com.backend.dto.farm.PlotResponse;
 import com.backend.entity.Farm;
 import com.backend.entity.Plot;
 import com.backend.repository.FarmRepository;

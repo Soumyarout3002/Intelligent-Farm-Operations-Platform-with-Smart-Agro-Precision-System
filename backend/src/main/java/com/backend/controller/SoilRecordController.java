@@ -1,7 +1,7 @@
 package com.backend.controller;
 
-import com.backend.dto.SoilRecordRequest;
-import com.backend.dto.SoilRecordResponse;
+import com.backend.dto.farm.SoilRecordRequest;
+import com.backend.dto.farm.SoilRecordResponse;
 import com.backend.entity.User;
 import com.backend.service.SoilRecordService;
 

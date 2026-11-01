@@ -1,6 +1,6 @@
 package com.backend.service;
 
-import com.backend.dto.FarmDocumentResponse;
+import com.backend.dto.farm.FarmDocumentResponse;
 import com.backend.entity.Farm;
 import com.backend.entity.FarmDocument;
 import com.backend.repository.FarmDocumentRepository;

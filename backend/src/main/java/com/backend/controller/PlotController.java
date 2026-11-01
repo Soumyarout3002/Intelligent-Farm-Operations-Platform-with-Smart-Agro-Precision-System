@@ -1,7 +1,7 @@
 package com.backend.controller;
 
-import com.backend.dto.PlotRequest;
-import com.backend.dto.PlotResponse;
+import com.backend.dto.farm.PlotRequest;
+import com.backend.dto.farm.PlotResponse;
 import com.backend.entity.User;
 import com.backend.service.PlotService;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,7 +1,7 @@
 package com.backend.service;
 
-import com.backend.dto.FarmRequest;
-import com.backend.dto.FarmResponse;
+import com.backend.dto.farm.FarmRequest;
+import com.backend.dto.farm.FarmResponse;
 import com.backend.entity.Farm;
 import com.backend.entity.User;
 import com.backend.repository.FarmRepository;

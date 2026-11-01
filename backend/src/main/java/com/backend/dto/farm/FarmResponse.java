@@ -1,4 +1,4 @@
-package com.backend.dto;
+package com.backend.dto.farm;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

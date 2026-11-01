@@ -1,7 +1,7 @@
 package com.backend.controller;
 
-import com.backend.dto.WorkerAssignmentRequest;
-import com.backend.dto.WorkerAssignmentResponse;
+import com.backend.dto.farm.WorkerAssignmentRequest;
+import com.backend.dto.farm.WorkerAssignmentResponse;
 import com.backend.entity.User;
 import com.backend.service.FarmWorkerAssignmentService;
 

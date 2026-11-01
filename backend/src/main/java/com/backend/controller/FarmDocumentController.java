@@ -1,6 +1,6 @@
 package com.backend.controller;
 
-import com.backend.dto.FarmDocumentResponse;
+import com.backend.dto.farm.FarmDocumentResponse;
 import com.backend.entity.User;
 import com.backend.service.FarmDocumentService;
 

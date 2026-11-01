@@ -1,4 +1,4 @@
-package com.backend.dto;
+package com.backend.dto.farm;
 
 import jakarta.validation.constraints.*;
 import lombok.*;
