@@ -8,7 +8,7 @@ import { isEmail } from '../../utils/validation';
 
 const DEMO = [
   ['Admin', 'admin@farmverse.demo', 'Admin@123'],
-  ['Manager', 'manager@farmverse.demo', 'Manager@123'],
+  ['Field Worker', 'fieldworker@farmverse.demo', 'FieldWorker@123'],
   ['Farmer', 'farmer@farmverse.demo', 'Farmer@123'],
 ];
 

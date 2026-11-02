@@ -182,3 +182,135 @@
     border-right-color: var(--border);
   }
 }
+
+
+/* Recent Activities - Modern Feed */
+
+.recent-activity-card {
+  min-width: 0;
+}
+
+.activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.activity-header h3 {
+  margin: 0;
+}
+
+.activity-header p {
+  margin: 5px 0 0;
+  color: #84958a;
+  font-size: 12px;
+}
+
+.activity-more {
+  color: #42b879;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.activity-more:hover {
+  color: #70d69b;
+}
+
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.09);
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(66,184,121,0.12);
+}
+
+.activity-icon span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #42b879;
+}
+
+.activity-icon.deleted {
+  background: rgba(228,119,119,0.12);
+}
+
+.activity-icon.deleted span {
+  background: #e47777;
+}
+
+.activity-icon.deactivated {
+  background: rgba(227,163,75,0.12);
+}
+
+.activity-icon.deactivated span {
+  background: #e3a34b;
+}
+
+.activity-icon.updated {
+  background: rgba(101,169,216,0.12);
+}
+
+.activity-icon.updated span {
+  background: #65a9d8;
+}
+
+.activity-content {
+  min-width: 0;
+}
+
+.activity-content strong {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #e1eee5;
+  margin-bottom: 4px;
+}
+
+.activity-content p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #aab9ae;
+  overflow-wrap: anywhere;
+}
+
+.activity-item time {
+  color: #84958a;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+@media (max-width: 550px) {
+  .activity-item {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .activity-item time {
+    grid-column: 2;
+  }
+}
