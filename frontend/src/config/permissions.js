@@ -1,4 +1,3 @@
-
 import {
   LayoutDashboard,
   Users,
@@ -8,6 +7,8 @@ import {
   Wrench,
   CalendarDays,
   ClipboardList,
+  CloudSun,
+  Bell,
 } from 'lucide-react';
 
 // Frontend role permissions.
@@ -21,6 +22,8 @@ export const ROLE_PERMISSIONS = {
     'equipment',
     'equipmentBookings',
     'resources',
+    'weather',
+    'notifications',
   ],
 
   field_worker: [
@@ -30,6 +33,8 @@ export const ROLE_PERMISSIONS = {
     'equipment',
     'equipmentBookings',
     'resources',
+    'weather',
+    'notifications',
   ],
 
   admin: [
@@ -42,12 +47,13 @@ export const ROLE_PERMISSIONS = {
     'equipment',
     'equipmentBookings',
     'resources',
+    'weather',
+    'notifications',
   ],
 };
 
 // Sidebar navigation
 // Activity History intentionally does not appear in the sidebar.
-// It is accessible through the Dashboard's "View all" link.
 export const NAV_ITEMS = [
   {
     key: 'overview',
@@ -92,6 +98,18 @@ export const NAV_ITEMS = [
     icon: ClipboardList,
   },
   {
+    key: 'weather',
+    label: 'Weather Monitoring',
+    path: '/weather',
+    icon: CloudSun,
+  },
+  {
+    key: 'notifications',
+    label: 'Notifications',
+    path: '/notifications',
+    icon: Bell,
+  },
+  {
     key: 'profile',
     label: 'User Profile',
     path: '/profile',
@@ -99,7 +117,7 @@ export const NAV_ITEMS = [
   },
 ];
 
-// Normalize backend roles such as FIELD_WORKER for frontend use.
+// Normalize backend roles such as FIELD_WORKER.
 export const normalizeRole = (role = '') =>
   role.toLowerCase().replace(/-/g, '_');
 
@@ -107,15 +125,13 @@ export const normalizeRole = (role = '') =>
 export const can = (role, key) =>
   (ROLE_PERMISSIONS[normalizeRole(role)] || []).includes(key);
 
-// Only the documented project roles are available.
 export const ROLES = ['farmer', 'field_worker', 'admin'];
 
-// Capitalize text: "field_worker" -> "Field Worker"
+// Capitalize text.
 export const cap = (value = '') =>
   value
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
-// Display-friendly role names
 export const roleLabel = (role) => cap(normalizeRole(role));

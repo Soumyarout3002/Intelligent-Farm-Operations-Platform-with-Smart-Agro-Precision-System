@@ -5,12 +5,7 @@ import AuthShell from './AuthShell';
 import { useAuth } from '../../context/AuthContext';
 import { getRememberedEmail } from '../../services/authService';
 import { isEmail } from '../../utils/validation';
-
-const DEMO = [
-  ['Admin', 'admin@farmverse.demo', 'Admin@123'],
-  ['Field Worker', 'fieldworker@farmverse.demo', 'FieldWorker@123'],
-  ['Farmer', 'farmer@farmverse.demo', 'Farmer@123'],
-];
+import { createFarm } from '../../services/farmService';
 
 export default function Login() {
   const { login } = useAuth();
@@ -25,21 +20,51 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
 
   async function submit(e) {
-    e.preventDefault();
-    const errs = {};
-    if (!email.trim()) errs.email = 'Email is required.';
-    else if (!isEmail(email)) errs.email = 'Enter a valid email address.';
-    if (!password) errs.password = 'Password is required.';
-    setErrors(errs); setError('');
-    if (Object.keys(errs).length) return;
-    setBusy(true);
-    try {
-      await login({ email, password, remember });
-      navigate('/overview', { replace: true });
-    } catch (err) {
-      setError(err.message); setBusy(false);
-    }
+  e.preventDefault();
+
+  const errs = {};
+
+  if (!email.trim()) {
+    errs.email = 'Email is required.';
+  } else if (!isEmail(email)) {
+    errs.email = 'Enter a valid email address.';
   }
+
+  if (!password) {
+    errs.password = 'Password is required.';
+  }
+
+  setErrors(errs);
+  setError('');
+
+  if (Object.keys(errs).length) return;
+
+  setBusy(true);
+
+  try {
+    await login({ email, password, remember });
+
+    const pendingFarm = sessionStorage.getItem('fvn_pending_farm');
+
+    if (pendingFarm) {
+      try {
+        await createFarm(JSON.parse(pendingFarm));
+        sessionStorage.removeItem('fvn_pending_farm');
+        navigate('/overview', { replace: true });
+      } catch (farmError) {
+        navigate('/farms', {
+          replace: true,
+          state: { farmSetupError: farmError.message }
+        });
+      }
+    } else {
+      navigate('/overview', { replace: true });
+    }
+  } catch (err) {
+    setError(err.message);
+    setBusy(false);
+  }
+}
 
   return (
     <AuthShell>
@@ -65,17 +90,10 @@ export default function Login() {
           <label className="check"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> <span>Remember me</span></label>
           <Link to="/forgot-password">Forgot password?</Link>
         </div>
-        <button className="btn primary block" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+        <button className="btn primary block" disabled={busy}>{busy ? 'Signing inâ€¦' : 'Sign in'}</button>
       </form>
       <p className="center">New to FarmVerse Nexus? <Link to="/register">Create an account</Link></p>
-      <div className="demo-box">
-        <strong>Demo accounts (click to fill)</strong>
-        {DEMO.map(([r, e, p]) => (
-          <button type="button" key={r} className="demo-btn" onClick={() => { setEmail(e); setPassword(p); setErrors({}); setError(''); }}>
-            <b>{r}</b> <span>{e} / {p}</span>
-          </button>
-        ))}
-      </div>
+
     </AuthShell>
   );
 }
