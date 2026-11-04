@@ -157,4 +157,28 @@ export async function resetPassword(token, newPassword) {
   });
 }
 
+// Validate an invitation using its secure token.
+export async function validateInvitation(token) {
+  if (!token) {
+    throw new Error('Invitation token is missing.');
+  }
+
+  return request(
+    `/api/invitations/validate?token=${encodeURIComponent(token)}`,
+    { method: 'GET' }
+  );
+}
+
+// Accept an invitation and create the invited user's account.
+export async function acceptInvitation({ token, name, password }) {
+  return request('/api/invitations/accept', {
+    method: 'POST',
+    body: {
+      token,
+      name: name.trim(),
+      password,
+    },
+  });
+}
+
 
