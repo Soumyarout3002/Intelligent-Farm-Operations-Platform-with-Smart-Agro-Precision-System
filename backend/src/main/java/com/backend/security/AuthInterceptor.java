@@ -38,6 +38,8 @@ public class AuthInterceptor implements HandlerInterceptor {
                 if ("POST".equalsIgnoreCase(method)
                         && (path.equals("/api/auth/login")
                         || path.equals("/api/auth/register")
+                        || path.equals("/api/auth/admin-setup")
+                        || path.equals("/api/auth/register-invited")
                         || path.equals("/api/auth/forgot-password")
                         || path.equals("/api/auth/reset-password")
                         || path.equals("/api/dev/password-reset/link")

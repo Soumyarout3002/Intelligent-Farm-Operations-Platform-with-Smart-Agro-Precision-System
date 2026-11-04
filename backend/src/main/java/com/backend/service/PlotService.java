@@ -22,11 +22,13 @@ public class PlotService {
 
     private final FarmRepository farmRepository;
     private final PlotRepository plotRepository;
+    private final FarmAccessService farmAccessService;
+    private final com.backend.repository.SoilRecordRepository soilRecordRepository;
 
     public PlotResponse createPlot(
             Long farmId, PlotRequest request, Long ownerId) {
 
-        Farm farm = getOwnedFarm(farmId, ownerId);
+        Farm farm = farmAccessService.requireManageable(farmId, ownerId);
 
         if (plotRepository.existsByFarmIdAndNameIgnoreCase(
                 farmId, request.getName().trim())) {
@@ -41,6 +43,7 @@ public class PlotService {
                 .plotCode(request.getPlotCode())
                 .area(request.getArea())
                 .areaUnit(request.getAreaUnit())
+                .soilType(request.getSoilType())
                 .description(request.getDescription())
                 .farm(farm)
                 .build();
@@ -75,7 +78,7 @@ public class PlotService {
             PlotRequest request,
             Long ownerId) {
 
-        getOwnedFarm(farmId, ownerId);
+        farmAccessService.requireManageable(farmId, ownerId);
 
         Plot plot = getPlotById(farmId, plotId);
 
@@ -91,6 +94,7 @@ public class PlotService {
         plot.setPlotCode(request.getPlotCode());
         plot.setArea(request.getArea());
         plot.setAreaUnit(request.getAreaUnit());
+        plot.setSoilType(request.getSoilType());
         plot.setDescription(request.getDescription());
 
         return toResponse(plotRepository.save(plot));
@@ -99,17 +103,17 @@ public class PlotService {
     public void deletePlot(
             Long farmId, Long plotId, Long ownerId) {
 
-        getOwnedFarm(farmId, ownerId);
+        farmAccessService.requireManageable(farmId, ownerId);
 
         Plot plot = getPlotById(farmId, plotId);
-
+        if (soilRecordRepository.existsByPlotId(plotId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Delete the plot's soil test records before deleting this plot.");
+        }
         plotRepository.delete(plot);
     }
 
     private Farm getOwnedFarm(Long farmId, Long ownerId) {
-        return farmRepository.findByIdAndOwnerId(farmId, ownerId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Farm not found"));
+        return farmAccessService.requireReadable(farmId, ownerId);
     }
 
     private Plot getPlotById(Long farmId, Long plotId) {
@@ -126,6 +130,7 @@ public class PlotService {
                 .area(plot.getArea())
                 .areaUnit(plot.getAreaUnit())
                 .status(plot.getStatus())
+                .soilType(plot.getSoilType())
                 .description(plot.getDescription())
                 .farmId(plot.getFarm().getId())
                 .farmName(plot.getFarm().getName())

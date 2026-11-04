@@ -31,6 +31,9 @@ public class PlotRequest {
     )
     private String areaUnit;
 
+    @Size(max = 50)
+    private String soilType;
+
     @Size(max = 500)
     private String description;
 }

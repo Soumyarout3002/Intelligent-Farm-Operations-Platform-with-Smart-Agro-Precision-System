@@ -55,6 +55,33 @@ public class AuthController {
         }
     }
 
+
+    @PostMapping("/admin-setup")
+    public ResponseEntity<?> createFirstAdmin(@Valid @RequestBody RegisterRequest request) {
+        try {
+            User user = authService.createFirstAdmin(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "First Admin created successfully",
+                    "id", user.getId(), "name", user.getName(),
+                    "email", user.getEmail(), "role", user.getRole()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/register-invited")
+    public ResponseEntity<?> registerInvited(@Valid @RequestBody RegisterRequest request) {
+        try {
+            User user = authService.registerByInvitation(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "Registration successful",
+                    "id", user.getId(), "name", user.getName(),
+                    "email", user.getEmail(), "role", user.getRole()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(
             @Valid @RequestBody LoginRequest request) {

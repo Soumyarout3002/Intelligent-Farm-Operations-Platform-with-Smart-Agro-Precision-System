@@ -26,13 +26,14 @@ public class FarmWorkerAssignmentService {
     private final FarmRepository farmRepository;
     private final UserRepository userRepository;
     private final FarmWorkerAssignmentRepository assignmentRepository;
+    private final FarmAccessService farmAccessService;
 
     public WorkerAssignmentResponse assignWorker(
             Long farmId,
             Long ownerId,
             WorkerAssignmentRequest request) {
 
-        Farm farm = getOwnedFarm(farmId, ownerId);
+        Farm farm = farmAccessService.requireManageable(farmId, ownerId);
 
         User worker = userRepository.findById(request.getWorkerId())
                 .orElseThrow(() -> new ResponseStatusException(
@@ -77,7 +78,7 @@ public class FarmWorkerAssignmentService {
             Long farmId,
             Long ownerId) {
 
-        getOwnedFarm(farmId, ownerId);
+        farmAccessService.requireManageable(farmId, ownerId);
 
         return assignmentRepository.findByFarmId(farmId)
                 .stream()
@@ -91,7 +92,7 @@ public class FarmWorkerAssignmentService {
             Long assignmentId,
             Long ownerId) {
 
-        getOwnedFarm(farmId, ownerId);
+        farmAccessService.requireManageable(farmId, ownerId);
 
         FarmWorkerAssignment assignment =
                 findAssignment(farmId, assignmentId);
@@ -105,7 +106,7 @@ public class FarmWorkerAssignmentService {
             Long ownerId,
             WorkerAssignmentRequest request) {
 
-        getOwnedFarm(farmId, ownerId);
+        farmAccessService.requireManageable(farmId, ownerId);
 
         FarmWorkerAssignment assignment =
                 findAssignment(farmId, assignmentId);
@@ -126,7 +127,7 @@ public class FarmWorkerAssignmentService {
             Long assignmentId,
             Long ownerId) {
 
-        getOwnedFarm(farmId, ownerId);
+        farmAccessService.requireManageable(farmId, ownerId);
 
         FarmWorkerAssignment assignment =
                 findAssignment(farmId, assignmentId);
@@ -136,9 +137,7 @@ public class FarmWorkerAssignmentService {
 
     private Farm getOwnedFarm(Long farmId, Long ownerId) {
 
-        return farmRepository.findByIdAndOwnerId(farmId, ownerId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Farm not found"));
+        return farmAccessService.requireReadable(farmId, ownerId);
     }
 
     private FarmWorkerAssignment findAssignment(

@@ -43,6 +43,9 @@ public class Plot {
     @Builder.Default
     private String status = "ACTIVE";
 
+    @Column(length = 50)
+    private String soilType;
+
     @Column(length = 500)
     private String description;
 

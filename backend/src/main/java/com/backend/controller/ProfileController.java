@@ -3,6 +3,7 @@ package com.backend.controller;
 
 import com.backend.entity.User;
 import com.backend.repository.UserRepository;
+import com.backend.service.ActivityLogService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -20,9 +21,11 @@ import java.util.Map;
 public class ProfileController {
 
     private final UserRepository userRepository;
+    private final ActivityLogService activityLogService;
 
-    public ProfileController(UserRepository userRepository) {
+    public ProfileController(UserRepository userRepository, ActivityLogService activityLogService) {
         this.userRepository = userRepository;
+        this.activityLogService = activityLogService;
     }
 
     // Read the profile of the user authenticated by AuthInterceptor.
@@ -77,6 +80,11 @@ public class ProfileController {
             );
         }
 
+        Map<String, Object> oldValues = new LinkedHashMap<>();
+        oldValues.put("name", user.getName());
+        oldValues.put("mobile", user.getMobile());
+        oldValues.put("language", user.getLanguage());
+
         user.setName(name);
         user.setMobile(
                 body.mobile() == null || body.mobile().isBlank()
@@ -92,6 +100,14 @@ public class ProfileController {
 
         // JPA persists the updated managed entity when the transaction completes.
         User savedUser = userRepository.save(user);
+
+        Map<String, Object> newValues = new LinkedHashMap<>();
+        newValues.put("name", savedUser.getName());
+        newValues.put("mobile", savedUser.getMobile());
+        newValues.put("language", savedUser.getLanguage());
+        activityLogService.logActivity(
+                savedUser, "PROFILE_UPDATED", "USER", savedUser.getId().toString(),
+                "User updated their profile.", oldValues, newValues, request);
 
         return ResponseEntity.ok(toProfileResponse(savedUser));
     }

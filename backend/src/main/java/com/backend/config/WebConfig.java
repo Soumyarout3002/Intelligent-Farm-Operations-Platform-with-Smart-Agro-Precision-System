@@ -28,7 +28,9 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**")
                 .excludePathPatterns(
                         "/api/auth/login",
-                        "/api/auth/register"
+                        "/api/auth/register",
+                        "/api/auth/admin-setup",
+                        "/api/auth/register-invited"
                 );
 
         // Next, check roles on endpoints annotated with @RequireRole.
@@ -36,7 +38,9 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**")
                 .excludePathPatterns(
                         "/api/auth/login",
-                        "/api/auth/register"
+                        "/api/auth/register",
+                        "/api/auth/admin-setup",
+                        "/api/auth/register-invited"
                 );
     }
 }

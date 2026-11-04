@@ -17,9 +17,16 @@ import FarmDetails from './pages/FarmDetails';
 import Profile from './pages/Profile';
 import AccessDenied from './pages/AccessDenied';
 import ActivityHistory from './pages/ActivityHistory';
+import WeatherMonitoring from './pages/WeatherMonitoring';
+import Notifications from './pages/Notifications';
 
 function Guard({ perm, children }) {
   const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
   return can(user.role, perm) ? children : <AccessDenied />;
 }
 function PublicOnly({ children }) {
@@ -75,6 +82,8 @@ export default function App() {
     </Guard>
   }
 />
+        <Route path="/weather" element={<Guard perm="weather"><WeatherMonitoring /></Guard>} />
+        <Route path="/notifications" element={<Guard perm="notifications"><Notifications /></Guard>} />
       </Route>
       <Route path="/" element={<Navigate to="/overview" replace />} />
       <Route path="*" element={<Navigate to="/overview" replace />} />

@@ -10,6 +10,9 @@ public interface FarmWorkerAssignmentRepository
         extends JpaRepository<FarmWorkerAssignment, Long> {
 
     List<FarmWorkerAssignment> findByFarmId(Long farmId);
+    boolean existsByFarmId(Long farmId);
+
+    List<FarmWorkerAssignment> findByWorkerIdAndStatusIgnoreCase(Long workerId, String status);
 
     Optional<FarmWorkerAssignment> findByIdAndFarmId(
             Long id, Long farmId);

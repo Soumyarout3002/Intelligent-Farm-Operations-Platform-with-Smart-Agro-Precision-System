@@ -19,6 +19,7 @@ import java.util.List;
 public class FarmController {
 
     private final FarmService farmService;
+    private final com.backend.service.ActivityLogService activityLogService;
 
     @PostMapping
     public ResponseEntity<FarmResponse> createFarm(
@@ -27,8 +28,11 @@ public class FarmController {
 
         User user = getAuthenticatedUser(httpRequest);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(farmService.createFarm(request, user.getId()));
+        FarmResponse created = farmService.createFarm(request, user.getId());
+        activityLogService.logActivity(user, "FARM_CREATED", "FARM", created.getId().toString(),
+                "Farm created: " + created.getName(), null,
+                java.util.Map.of("name", created.getName(), "location", created.getLocation()), httpRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping
@@ -38,7 +42,7 @@ public class FarmController {
         User user = getAuthenticatedUser(request);
 
         return ResponseEntity.ok(
-                farmService.getMyFarms(user.getId()));
+                farmService.getMyFarms(user.getId(), user.getRole()));
     }
 
     @GetMapping("/{farmId}")
@@ -49,7 +53,7 @@ public class FarmController {
         User user = getAuthenticatedUser(request);
 
         return ResponseEntity.ok(
-                farmService.getFarmById(farmId, user.getId()));
+                farmService.getFarmById(farmId, user.getId(), user.getRole()));
     }
 
     @PutMapping("/{farmId}")
@@ -60,9 +64,11 @@ public class FarmController {
 
         User user = getAuthenticatedUser(request);
 
-        return ResponseEntity.ok(
-                farmService.updateFarm(
-                        farmId, farmRequest, user.getId()));
+        FarmResponse updated = farmService.updateFarm(farmId, farmRequest, user.getId(), user.getRole());
+        activityLogService.logActivity(user, "FARM_UPDATED", "FARM", updated.getId().toString(),
+                "Farm updated: " + updated.getName(), null,
+                java.util.Map.of("name", updated.getName(), "location", updated.getLocation()), request);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{farmId}")
@@ -72,8 +78,10 @@ public class FarmController {
 
         User user = getAuthenticatedUser(request);
 
-        farmService.deleteFarm(farmId, user.getId());
-
+        FarmResponse existing = farmService.getFarmById(farmId, user.getId(), user.getRole());
+        farmService.deleteFarm(farmId, user.getId(), user.getRole());
+        activityLogService.logActivity(user, "FARM_DELETED", "FARM", farmId.toString(),
+                "Farm deleted: " + existing.getName(), null, null, request);
         return ResponseEntity.noContent().build();
     }
 

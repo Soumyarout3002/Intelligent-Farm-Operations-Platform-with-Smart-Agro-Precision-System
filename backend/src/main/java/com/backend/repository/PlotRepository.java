@@ -10,6 +10,8 @@ public interface PlotRepository extends JpaRepository<Plot, Long> {
 
     List<Plot> findByFarmId(Long farmId);
 
+    boolean existsByFarmId(Long farmId);
+
     Optional<Plot> findByIdAndFarmId(Long plotId, Long farmId);
 
     boolean existsByFarmIdAndNameIgnoreCase(Long farmId, String name);

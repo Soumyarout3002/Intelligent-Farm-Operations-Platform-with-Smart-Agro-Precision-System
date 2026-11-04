@@ -29,6 +29,10 @@ public class RegisterRequest {
     @Size(max = 30, message = "Language preference is too long")
     private String language;
 
+    private String adminSetupSecret;
+
+    private String invitationToken;
+
     public String getName() {
         return name;
     }
@@ -68,6 +72,12 @@ public class RegisterRequest {
     public void setMobile(String mobile) {
         this.mobile = mobile;
     }
+
+    public String getAdminSetupSecret() { return adminSetupSecret; }
+    public void setAdminSetupSecret(String value) { this.adminSetupSecret = value; }
+
+    public String getInvitationToken() { return invitationToken; }
+    public void setInvitationToken(String value) { this.invitationToken = value; }
 
     public String getLanguage() {
         return language;

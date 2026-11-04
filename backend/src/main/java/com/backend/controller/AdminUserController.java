@@ -76,7 +76,7 @@ public ResponseEntity<?> createUser(
         HttpServletRequest httpRequest) {
 
     try {
-        User user = authService.register(request);
+        User user = authService.createByAdmin(request);
 
         User actor = getAuthenticatedUser(httpRequest);
 

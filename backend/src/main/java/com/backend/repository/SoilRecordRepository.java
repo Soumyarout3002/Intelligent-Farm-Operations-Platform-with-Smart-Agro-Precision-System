@@ -10,6 +10,7 @@ public interface SoilRecordRepository
         extends JpaRepository<SoilRecord, Long> {
 
     List<SoilRecord> findByPlotIdOrderByRecordedAtDesc(Long plotId);
+    boolean existsByPlotId(Long plotId);
 
     Optional<SoilRecord> findByIdAndPlotId(Long id, Long plotId);
 }

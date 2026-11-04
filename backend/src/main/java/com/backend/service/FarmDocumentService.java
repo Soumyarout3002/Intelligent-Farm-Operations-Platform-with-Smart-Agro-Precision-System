@@ -35,6 +35,7 @@ public class FarmDocumentService {
 
     private final FarmRepository farmRepository;
     private final FarmDocumentRepository documentRepository;
+    private final FarmAccessService farmAccessService;
 
     @Value("${app.upload.dir:uploads/farm-documents}")
     private String uploadDirectory;
@@ -45,7 +46,7 @@ public class FarmDocumentService {
             MultipartFile file,
             String description) {
 
-        Farm farm = getOwnedFarm(farmId, ownerId);
+        Farm farm = farmAccessService.requireManageable(farmId, ownerId);
 
         validateFile(file);
 
@@ -106,7 +107,7 @@ public class FarmDocumentService {
     public List<FarmDocumentResponse> getFarmDocuments(
             Long farmId, Long ownerId) {
 
-        getOwnedFarm(farmId, ownerId);
+        farmAccessService.requireManageable(farmId, ownerId);
 
         return documentRepository
                 .findByFarmIdOrderByUploadedAtDesc(farmId)
@@ -121,7 +122,7 @@ public class FarmDocumentService {
             Long documentId,
             Long ownerId) {
 
-        getOwnedFarm(farmId, ownerId);
+        farmAccessService.requireManageable(farmId, ownerId);
 
         FarmDocument document = findDocument(farmId, documentId);
 
@@ -156,7 +157,7 @@ public class FarmDocumentService {
             Long documentId,
             Long ownerId) {
 
-        getOwnedFarm(farmId, ownerId);
+        farmAccessService.requireManageable(farmId, ownerId);
 
         FarmDocument document = findDocument(farmId, documentId);
 
@@ -224,9 +225,7 @@ public class FarmDocumentService {
 
     private Farm getOwnedFarm(Long farmId, Long ownerId) {
 
-        return farmRepository.findByIdAndOwnerId(farmId, ownerId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Farm not found"));
+        return farmAccessService.requireReadable(farmId, ownerId);
     }
 
     private FarmDocument findDocument(Long farmId, Long documentId) {

@@ -18,6 +18,7 @@ public class PlotResponse {
     private BigDecimal area;
     private String areaUnit;
     private String status;
+    private String soilType;
     private String description;
     private Long farmId;
     private String farmName;

@@ -26,21 +26,52 @@ export function validateFields(fields, values) {
   return errors;
 }
 
+
 export function validateFarm(v) {
   const e = {};
-  if (!v.name?.trim()) e.name = 'Farm name is required.';
-  else if (v.name.trim().length < 3) e.name = 'Farm name must be at least 3 characters.';
-  if (!v.location?.trim()) e.location = 'Location is required.';
+
+  if (!v.name?.trim()) {
+    e.name = 'Farm name is required.';
+  } else if (v.name.trim().length < 3) {
+    e.name = 'Farm name must be at least 3 characters.';
+  } else if (v.name.trim().length > 150) {
+    e.name = 'Farm name cannot exceed 150 characters.';
+  }
+
+  if (!v.location?.trim()) {
+    e.location = 'Location is required.';
+  } else if (v.location.trim().length > 255) {
+    e.location = 'Location cannot exceed 255 characters.';
+  }
+
   const area = Number(v.area);
-  if (v.area === '' || Number.isNaN(area) || area <= 0) e.area = 'Area must be a number greater than 0.';
-  else if (area > 100000) e.area = 'Area looks too large (max 100000).';
-  if (!v.unit) e.unit = 'Select an area unit.';
-  if (!v.soil) e.soil = 'Select a soil type.';
-  if (!v.crop?.trim()) e.crop = 'Primary crop is required.';
-  const plots = Number(v.plots);
-  if (v.plots === '' || !Number.isInteger(plots) || plots < 1) e.plots = 'Plots must be a whole number of at least 1.';
-  else if (plots > 1000) e.plots = 'Plots cannot exceed 1000.';
-  if (!v.status) e.status = 'Select a status.';
-  if ((v.notes || '').length > 500) e.notes = 'Notes must be 500 characters or fewer.';
+
+  if (v.area === '' || Number.isNaN(area) || area < 0.01) {
+    e.area = 'Area must be at least 0.01.';
+  } else if (area > 9999999999.99) {
+    e.area = 'Area is too large.';
+  } else if (!/^\d+(\.\d{1,2})?$/.test(String(v.area))) {
+    e.area = 'Area can have at most 2 decimal places.';
+  }
+
+  if (!v.unit || !['acres', 'hectares', 'sq meters'].includes(v.unit)) {
+    e.unit = 'Select a valid area unit.';
+  }
+
+  if (v.soil && v.soil.length > 50) {
+    e.soil = 'Soil type cannot exceed 50 characters.';
+  }
+
+  if (!v.crop?.trim()) {
+    e.crop = 'Primary crop is required.';
+  } else if (v.crop.trim().length > 100) {
+    e.crop = 'Primary crop cannot exceed 100 characters.';
+  }
+
+  if ((v.notes || '').length > 500) {
+    e.notes = 'Notes must be 500 characters or fewer.';
+  }
+
   return e;
 }
+

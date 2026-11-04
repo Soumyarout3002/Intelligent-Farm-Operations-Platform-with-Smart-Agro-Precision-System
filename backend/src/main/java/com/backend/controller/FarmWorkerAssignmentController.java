@@ -8,8 +8,6 @@ import com.backend.service.FarmWorkerAssignmentService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
-import lombok.RequiredArgsConstructor;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,10 +16,26 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/farms/{farmId}/workers")
-@RequiredArgsConstructor
 public class FarmWorkerAssignmentController {
 
     private final FarmWorkerAssignmentService assignmentService;
+    private final com.backend.repository.UserRepository userRepository;
+    private final com.backend.service.FarmAccessService farmAccessService;
+
+    public FarmWorkerAssignmentController(FarmWorkerAssignmentService assignmentService, com.backend.repository.UserRepository userRepository, com.backend.service.FarmAccessService farmAccessService) {
+        this.assignmentService = assignmentService;
+        this.userRepository = userRepository;
+        this.farmAccessService = farmAccessService;
+    }
+
+    @GetMapping("/available")
+    public ResponseEntity<List<java.util.Map<String, Object>>> availableWorkers(@PathVariable Long farmId, HttpServletRequest request) {
+        farmAccessService.requireManageable(farmId, getOwnerId(request));
+        List<java.util.Map<String, Object>> workers = userRepository.findByRoleIgnoreCaseAndStatusIgnoreCase("FIELD_WORKER", "ACTIVE")
+            .stream().map(worker -> java.util.Map.<String, Object>of("id", worker.getId(), "name", worker.getName(), "email", worker.getEmail(), "mobile", worker.getMobile() == null ? "" : worker.getMobile()))
+            .toList();
+        return ResponseEntity.ok(workers);
+    }
 
     private Long getOwnerId(HttpServletRequest request) {
 

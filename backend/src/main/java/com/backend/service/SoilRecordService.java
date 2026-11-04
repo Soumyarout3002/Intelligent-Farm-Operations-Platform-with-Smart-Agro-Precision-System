@@ -1,3 +1,4 @@
+
 package com.backend.service;
 
 import com.backend.dto.farm.SoilRecordRequest;
@@ -5,7 +6,6 @@ import com.backend.dto.farm.SoilRecordResponse;
 import com.backend.entity.Farm;
 import com.backend.entity.Plot;
 import com.backend.entity.SoilRecord;
-import com.backend.repository.FarmRepository;
 import com.backend.repository.PlotRepository;
 import com.backend.repository.SoilRecordRepository;
 
@@ -23,15 +23,18 @@ import java.util.List;
 @Transactional
 public class SoilRecordService {
 
-    private final FarmRepository farmRepository;
     private final PlotRepository plotRepository;
     private final SoilRecordRepository soilRecordRepository;
+    private final FarmAccessService farmAccessService;
 
+    // Admin, farm owner and assigned Field Worker can add soil records.
     public SoilRecordResponse createRecord(
             Long farmId,
             Long plotId,
             Long ownerId,
             SoilRecordRequest request) {
+
+        farmAccessService.requireSoilRecordWritable(farmId, ownerId);
 
         Plot plot = getOwnedPlot(farmId, plotId, ownerId);
 
@@ -82,12 +85,15 @@ public class SoilRecordService {
         return mapToResponse(record);
     }
 
+    // Admin, farm owner and assigned Field Worker can edit soil records.
     public SoilRecordResponse updateRecord(
             Long farmId,
             Long plotId,
             Long recordId,
             Long ownerId,
             SoilRecordRequest request) {
+
+        farmAccessService.requireSoilRecordWritable(farmId, ownerId);
 
         getOwnedPlot(farmId, plotId, ownerId);
 
@@ -108,11 +114,14 @@ public class SoilRecordService {
         return mapToResponse(soilRecordRepository.save(record));
     }
 
+    // Only Admin and farm owner can delete soil records.
     public void deleteRecord(
             Long farmId,
             Long plotId,
             Long recordId,
             Long ownerId) {
+
+        farmAccessService.requireManageable(farmId, ownerId);
 
         getOwnedPlot(farmId, plotId, ownerId);
 
@@ -124,11 +133,12 @@ public class SoilRecordService {
         soilRecordRepository.delete(record);
     }
 
-    private Plot getOwnedPlot(Long farmId, Long plotId, Long ownerId) {
+    private Plot getOwnedPlot(
+            Long farmId,
+            Long plotId,
+            Long ownerId) {
 
-        Farm farm = farmRepository.findByIdAndOwnerId(farmId, ownerId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Farm not found"));
+        Farm farm = farmAccessService.requireReadable(farmId, ownerId);
 
         return plotRepository.findByIdAndFarmId(plotId, farm.getId())
                 .orElseThrow(() -> new ResponseStatusException(
