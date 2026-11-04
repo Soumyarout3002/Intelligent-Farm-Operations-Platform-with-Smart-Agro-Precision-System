@@ -17,6 +17,7 @@ import FarmDetails from './pages/FarmDetails';
 import Profile from './pages/Profile';
 import AccessDenied from './pages/AccessDenied';
 import ActivityHistory from './pages/ActivityHistory';
+import AcceptInvitation from './pages/auth/AcceptInvitation';
 
 function Guard({ perm, children }) {
   const { user } = useAuth();
@@ -33,10 +34,8 @@ export default function App() {
       <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
       <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
       <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
-      <Route
-  path="/reset-password"
-  element={<PublicOnly><ResetPassword /></PublicOnly>}
-/>
+      <Route path="/reset-password" element={<PublicOnly><ResetPassword /></PublicOnly>}/>      
+      <Route path="/accept-invitation"element={<AcceptInvitation />}/>
       <Route element={<DashboardLayout />}>
         <Route path="/overview" element={<Guard perm="overview"><Overview /></Guard>} />
         <Route path="/users" element={<Guard perm="users"><UserManagement /></Guard>} />

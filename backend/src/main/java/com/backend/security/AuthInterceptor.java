@@ -35,13 +35,20 @@ public class AuthInterceptor implements HandlerInterceptor {
            // Only the intended POST authentication endpoints are public.
                 String method = request.getMethod();
 
-                if ("POST".equalsIgnoreCase(method)
-                        && (path.equals("/api/auth/login")
-                        || path.equals("/api/auth/register")
-                        || path.equals("/api/auth/forgot-password")
-                        || path.equals("/api/auth/reset-password")
-                        || path.equals("/api/dev/password-reset/link")
-                        || path.equals("/api/dev/password-reset/token"))) {
+                // Public authentication and invitation endpoints.
+                if (
+                        ("POST".equalsIgnoreCase(method)
+                                && (path.equals("/api/auth/login")
+                                || path.equals("/api/auth/register")
+                                || path.equals("/api/auth/forgot-password")
+                                || path.equals("/api/auth/reset-password")
+                                || path.equals("/api/invitations/accept")
+                                || path.equals("/api/dev/password-reset/link")
+                                || path.equals("/api/dev/password-reset/token")))
+                        ||
+                        ("GET".equalsIgnoreCase(method)
+                                && path.equals("/api/invitations/validate"))
+                ) {
                     return true;
                 }
 
