@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -37,4 +38,7 @@ public class InventoryItemRequest {
     @DecimalMin(value = "0.00", message = "Minimum stock cannot be negative")
     @Digits(integer = 10, fraction = 2)
     private BigDecimal minimum;
+
+    @FutureOrPresent(message = "Expiry date cannot be in the past")
+    private LocalDate expiryDate;
 }

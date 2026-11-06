@@ -4,6 +4,7 @@ package com.backend.dto.inventory;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -26,6 +27,8 @@ public class InventoryItemResponse {
     private String unit;
 
     private BigDecimal minimum;
+
+    private LocalDate expiryDate;
 
     private LocalDateTime createdAt;
 

@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -38,6 +39,9 @@ public class InventoryItem {
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal minimum;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -47,6 +47,7 @@ public class InventoryItemService {
                 .quantity(request.getQuantity())
                 .unit(request.getUnit().trim())
                 .minimum(request.getMinimum())
+                .expiryDate(request.getExpiryDate())
                 .build();
 
         return toResponse(inventoryItemRepository.save(item));
@@ -104,6 +105,7 @@ public class InventoryItemService {
         item.setQuantity(request.getQuantity());
         item.setUnit(request.getUnit().trim());
         item.setMinimum(request.getMinimum());
+        item.setExpiryDate(request.getExpiryDate());
 
         return toResponse(inventoryItemRepository.save(item));
     }
@@ -145,6 +147,7 @@ public class InventoryItemService {
                 .quantity(item.getQuantity())
                 .unit(item.getUnit())
                 .minimum(item.getMinimum())
+                .expiryDate(item.getExpiryDate())
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();
