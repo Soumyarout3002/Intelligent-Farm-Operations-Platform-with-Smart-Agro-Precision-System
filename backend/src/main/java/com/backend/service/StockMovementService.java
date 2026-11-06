@@ -32,7 +32,7 @@ public class StockMovementService {
             StockMovementRequest request) {
 
         return processMovement(
-                farmId, itemId, userId, request, MovementType.IN);
+        farmId, itemId, userId, request, MovementType.IN, null, null);
     }
 
     public StockMovementResponse stockOut(
@@ -42,15 +42,57 @@ public class StockMovementService {
             StockMovementRequest request) {
 
         return processMovement(
-                farmId, itemId, userId, request, MovementType.OUT);
+        farmId, itemId, userId, request, MovementType.OUT, null, null);
     }
 
+    public StockMovementResponse stockOutForCropUsage(
+        Long farmId,
+        Long itemId,
+        Long userId,
+        CropActivity cropActivity,
+        BigDecimal usedQuantity) {
+
+    if (usedQuantity == null
+            || usedQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Used quantity must be greater than zero");
+    }
+
+    if (cropActivity == null
+            || cropActivity.getCropCycle() == null
+            || cropActivity.getCropCycle().getPlot() == null
+            || cropActivity.getCropCycle().getPlot().getFarm() == null
+            || !farmId.equals(
+                    cropActivity.getCropCycle()
+                            .getPlot().getFarm().getId())) {
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Crop activity does not belong to this farm");
+    }
+
+    return processMovement(
+            farmId,
+            itemId,
+            userId,
+            null,
+            MovementType.OUT,
+            cropActivity,
+            usedQuantity);
+}
+    public boolean hasMovementForCropActivity(Long cropActivityId) {
+    return stockMovementRepository
+            .existsByCropActivityId(cropActivityId);
+}
+
     private StockMovementResponse processMovement(
-            Long farmId,
-            Long itemId,
-            Long userId,
-            StockMovementRequest request,
-            MovementType type) {
+        Long farmId,
+        Long itemId,
+        Long userId,
+        StockMovementRequest request,
+        MovementType type,
+        CropActivity cropActivity,
+        BigDecimal overrideQuantity) {
 
         Farm farm = farmRepository.findByIdAndOwnerId(farmId, userId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -61,12 +103,14 @@ public class StockMovementService {
         .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Inventory item not found"));
 
-        BigDecimal movementQuantity = request.getQuantity();
+        BigDecimal movementQuantity = overrideQuantity != null
+        ? overrideQuantity
+        : request.getQuantity();
 
         // Validate optional supplier
         Supplier supplier = null;
 
-        if (request.getSupplierId() != null) {
+        if (request != null && request.getSupplierId() != null) {
             supplier = supplierRepository
                     .findByIdAndFarmId(request.getSupplierId(), farmId)
                     .orElseThrow(() -> new ResponseStatusException(
@@ -76,8 +120,7 @@ public class StockMovementService {
         // Validate optional warehouse
         Warehouse warehouse = null;
 
-        if (request.getWarehouseId() != null) {
-            warehouse = warehouseRepository
+        if (request != null && request.getWarehouseId() != null) {            warehouse = warehouseRepository
                     .findByIdAndFarmId(request.getWarehouseId(), farmId)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND, "Warehouse not found"));
@@ -102,17 +145,26 @@ public class StockMovementService {
         // Update inventory quantity
         item.setQuantity(updatedQuantity);
         inventoryItemRepository.save(item);
+        // Link inventory item and quantity to crop activity
+        if (cropActivity != null) {
+            cropActivity.setInventoryItem(item);
+            cropActivity.setUsedQuantity(movementQuantity);
+        }
 
         // Save stock movement history
         StockMovement movement = StockMovement.builder()
-                .farm(farm)
-                .inventoryItem(item)
-                .type(type)
-                .quantity(movementQuantity)
-                .supplier(supplier)
-                .warehouse(warehouse)
-                .remarks(request.getRemarks())
-                .build();
+        .farm(farm)
+        .inventoryItem(item)
+        .type(type)
+        .quantity(movementQuantity)
+        .supplier(supplier)
+        .warehouse(warehouse)
+        .cropActivity(cropActivity)
+        .remarks(request != null
+                ? request.getRemarks()
+                : "Stock used for crop activity: "
+                    + cropActivity.getTitle())
+        .build();
 
         StockMovement savedMovement =
                 stockMovementRepository.save(movement);

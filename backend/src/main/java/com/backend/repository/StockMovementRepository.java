@@ -14,4 +14,8 @@ public interface StockMovementRepository
     );
 
     List<StockMovement> findByFarmIdOrderByCreatedAtDesc(Long farmId);
+
+    // Check whether stock was already deducted for a crop activity
+
+    boolean existsByCropActivityId(Long cropActivityId);
 }

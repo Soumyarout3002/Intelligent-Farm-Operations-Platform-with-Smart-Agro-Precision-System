@@ -20,6 +20,7 @@ public class CropTrackingService {
     private final CropCycleRepository cropCycleRepository;
     private final FarmRepository farmRepository;
     private final PlotRepository plotRepository;
+    private final StockMovementService stockMovementService;
 
     private static final Set<String> VALID_STAGES = Set.of(
             "GERMINATION", "SEEDLING", "TILLERING",
@@ -33,18 +34,20 @@ public class CropTrackingService {
     );
 
     public CropTrackingService(
-            GrowthStageRecordRepository stageRepository,
-            CropActivityRepository activityRepository,
-            CropCycleRepository cropCycleRepository,
-            FarmRepository farmRepository,
-            PlotRepository plotRepository) {
+        GrowthStageRecordRepository stageRepository,
+        CropActivityRepository activityRepository,
+        CropCycleRepository cropCycleRepository,
+        FarmRepository farmRepository,
+        PlotRepository plotRepository,
+        StockMovementService stockMovementService) {
 
-        this.stageRepository = stageRepository;
-        this.activityRepository = activityRepository;
-        this.cropCycleRepository = cropCycleRepository;
-        this.farmRepository = farmRepository;
-        this.plotRepository = plotRepository;
-    }
+    this.stageRepository = stageRepository;
+    this.activityRepository = activityRepository;
+    this.cropCycleRepository = cropCycleRepository;
+    this.farmRepository = farmRepository;
+    this.plotRepository = plotRepository;
+    this.stockMovementService = stockMovementService;
+}
 
     //GROWTH STAGES
 
@@ -118,27 +121,69 @@ public class CropTrackingService {
 
     //FARMING ACTIVITIES
 
-    @Transactional
-    public CropActivityResponse addActivity(
-            Long farmId, Long plotId, Long cycleId,
-            Long ownerId, CropActivityRequest request) {
 
-        CropCycle cycle = getOwnedCycle(farmId, plotId, cycleId, ownerId);
+@Transactional
+public CropActivityResponse addActivity(
+        Long farmId, Long plotId, Long cycleId,
+        Long ownerId, CropActivityRequest request) {
 
-        validateActivity(request);
+    CropCycle cycle = getOwnedCycle(farmId, plotId, cycleId, ownerId);
 
-        CropActivity activity = new CropActivity();
-        activity.setCropCycle(cycle);
-        activity.setActivityType(
-        request.getActivityType().trim().toUpperCase());
-        activity.setTitle(request.getTitle().trim());
-        activity.setActivityDate(request.getActivityDate());
-        activity.setDescription(request.getDescription());
-        activity.setQuantity(request.getQuantity());
-        activity.setPerformedBy(request.getPerformedBy());
+    validateActivity(request);
 
-        return mapActivity(activityRepository.save(activity));
+    String activityType =
+            request.getActivityType().trim().toUpperCase();
+
+    // Validate inventory details for fertilization
+    if ("FERTILIZATION".equals(activityType)) {
+
+        if (request.getInventoryItemId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Inventory item is required for fertilization");
+        }
+
+        if (request.getUsedQuantity() == null
+                || request.getUsedQuantity()
+                        .compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Used quantity must be greater than zero");
+        }
     }
+
+    CropActivity activity = new CropActivity();
+
+    activity.setCropCycle(cycle);
+    activity.setActivityType(activityType);
+    activity.setTitle(request.getTitle().trim());
+    activity.setActivityDate(request.getActivityDate());
+    activity.setDescription(request.getDescription());
+    activity.setQuantity(request.getQuantity());
+    activity.setPerformedBy(request.getPerformedBy());
+
+    if ("FERTILIZATION".equals(activityType)) {
+
+        activity.setUsedQuantity(request.getUsedQuantity());
+
+        // Save activity first to generate its ID
+        activity = activityRepository.save(activity);
+
+        // Automatically deduct fertilizer stock
+        stockMovementService.stockOutForCropUsage(
+                farmId,
+                request.getInventoryItemId(),
+                ownerId,
+                activity,
+                request.getUsedQuantity()
+        );
+
+    } else {
+        activity = activityRepository.save(activity);
+    }
+
+    return mapActivity(activityRepository.save(activity));
+}
 
     @Transactional(readOnly = true)
     public List<CropActivityResponse> getActivities(
@@ -166,6 +211,12 @@ public class CropTrackingService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Activity not found"));
 
+        if (stockMovementService.hasMovementForCropActivity(activityId)) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Cannot update this activity because inventory stock has already been deducted");
+                }
+
        activity.setActivityType(
         request.getActivityType().trim().toUpperCase());
         activity.setTitle(request.getTitle().trim());
@@ -173,6 +224,8 @@ public class CropTrackingService {
         activity.setDescription(request.getDescription());
         activity.setQuantity(request.getQuantity());
         activity.setPerformedBy(request.getPerformedBy());
+
+
 
         return mapActivity(activityRepository.save(activity));
     }
@@ -189,7 +242,13 @@ public class CropTrackingService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Activity not found"));
 
-        activityRepository.delete(activity);
+        if (stockMovementService.hasMovementForCropActivity(activityId)) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Cannot delete this activity because inventory stock has already been deducted");
+                }
+
+                activityRepository.delete(activity);
     }
 
     //VALIDATION
@@ -256,18 +315,29 @@ private void validateStage(GrowthStageRequest request) {
         );
     }
 
-    private CropActivityResponse mapActivity(CropActivity activity) {
 
-        return new CropActivityResponse(
-                activity.getId(),
-                activity.getCropCycle().getId(),
-                activity.getActivityType(),
-                activity.getTitle(),
-                activity.getActivityDate(),
-                activity.getDescription(),
-                activity.getQuantity(),
-                activity.getPerformedBy(),
-                activity.getCreatedAt()
-        );
-    }
+private CropActivityResponse mapActivity(CropActivity activity) {
+
+    return new CropActivityResponse(
+            activity.getId(),
+            activity.getCropCycle().getId(),
+            activity.getActivityType(),
+            activity.getTitle(),
+            activity.getActivityDate(),
+            activity.getDescription(),
+            activity.getQuantity(),
+            activity.getPerformedBy(),
+            activity.getCreatedAt(),
+
+            // Inventory details
+            activity.getInventoryItem() != null
+                    ? activity.getInventoryItem().getId() : null,
+
+            activity.getInventoryItem() != null
+                    ? activity.getInventoryItem().getName() : null,
+
+            activity.getUsedQuantity()
+    );
+}
+
 }

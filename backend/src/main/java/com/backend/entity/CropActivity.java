@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.math.BigDecimal;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,6 +39,13 @@ public class CropActivity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "crop_cycle_id", nullable = false)
     private CropCycle cropCycle;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inventory_item_id")
+    private InventoryItem inventoryItem;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal usedQuantity;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

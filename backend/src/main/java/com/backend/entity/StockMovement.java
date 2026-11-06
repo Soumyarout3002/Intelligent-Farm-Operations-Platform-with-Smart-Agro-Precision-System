@@ -42,6 +42,10 @@ public class StockMovement {
     @JoinColumn(name = "warehouse_id")
     private Warehouse warehouse;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "crop_activity_id")
+    private CropActivity cropActivity;
+
     @Column(length = 500)
     private String remarks;
 
