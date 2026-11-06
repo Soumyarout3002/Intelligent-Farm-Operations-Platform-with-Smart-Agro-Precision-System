@@ -29,11 +29,11 @@ public interface InventoryItemRepository
             Long farmId
     );
 
-    // Find items whose current stock is at or below minimum stock.
+    // Find items whose current stock is below minimum stock.
     @Query("""
             SELECT i FROM InventoryItem i
             WHERE i.farm.id = :farmId
-            AND i.quantity <= i.minimum
+            AND i.quantity < i.minimum
             ORDER BY i.quantity ASC
             """)
     List<InventoryItem> findLowStockItems(

@@ -34,6 +34,9 @@ public class StockMovement {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal quantity;
 
+    @Column(precision = 12, scale = 2)
+    private BigDecimal balanceAfter;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id")
     private Supplier supplier;

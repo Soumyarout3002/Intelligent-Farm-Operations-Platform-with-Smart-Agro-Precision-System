@@ -18,4 +18,7 @@ public interface StockMovementRepository
     // Check whether stock was already deducted for a crop activity
 
     boolean existsByCropActivityId(Long cropActivityId);
+    boolean existsByInventoryItemId(Long inventoryItemId);
+
+    boolean existsByWarehouse_Id(Long warehouseId);
 }

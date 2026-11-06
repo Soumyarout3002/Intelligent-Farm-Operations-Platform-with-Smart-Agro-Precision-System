@@ -142,6 +142,11 @@ public CropActivityResponse addActivity(
                     HttpStatus.BAD_REQUEST,
                     "Inventory item is required for fertilization");
         }
+        if (request.getWarehouseId() == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Warehouse is required for fertilization");
+                }
 
         if (request.getUsedQuantity() == null
                 || request.getUsedQuantity()
@@ -171,12 +176,13 @@ public CropActivityResponse addActivity(
 
         // Automatically deduct fertilizer stock
         stockMovementService.stockOutForCropUsage(
-                farmId,
-                request.getInventoryItemId(),
-                ownerId,
-                activity,
-                request.getUsedQuantity()
-        );
+        farmId,
+        request.getInventoryItemId(),
+        ownerId,
+        request.getWarehouseId(),
+        activity,
+        request.getUsedQuantity()
+);
 
     } else {
         activity = activityRepository.save(activity);
@@ -210,6 +216,16 @@ public CropActivityResponse addActivity(
                 .findByIdAndCropCycleId(activityId, cycleId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Activity not found"));
+        String newActivityType =
+        request.getActivityType().trim().toUpperCase();
+
+if ("FERTILIZATION".equals(newActivityType)) {
+    throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "Fertilization activities cannot be updated. "
+                    + "Create a new activity to deduct inventory stock."
+    );
+}
 
         if (stockMovementService.hasMovementForCropActivity(activityId)) {
                 throw new ResponseStatusException(
@@ -217,8 +233,7 @@ public CropActivityResponse addActivity(
                         "Cannot update this activity because inventory stock has already been deducted");
                 }
 
-       activity.setActivityType(
-        request.getActivityType().trim().toUpperCase());
+        activity.setActivityType(newActivityType);
         activity.setTitle(request.getTitle().trim());
         activity.setActivityDate(request.getActivityDate());
         activity.setDescription(request.getDescription());

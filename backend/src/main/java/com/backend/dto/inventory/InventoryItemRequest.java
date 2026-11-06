@@ -1,11 +1,20 @@
 
 package com.backend.dto.inventory;
 
-import jakarta.validation.constraints.*;
-import lombok.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
+
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -39,6 +48,5 @@ public class InventoryItemRequest {
     @Digits(integer = 10, fraction = 2)
     private BigDecimal minimum;
 
-    @FutureOrPresent(message = "Expiry date cannot be in the past")
     private LocalDate expiryDate;
 }

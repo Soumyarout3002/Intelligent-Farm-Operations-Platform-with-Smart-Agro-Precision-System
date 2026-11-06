@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.backend.repository.InventoryStockRepository;
+import com.backend.repository.StockMovementRepository;
 
 import java.util.List;
 
@@ -22,6 +24,8 @@ public class InventoryItemService {
 
     private final InventoryItemRepository inventoryItemRepository;
     private final FarmRepository farmRepository;
+    private final InventoryStockRepository inventoryStockRepository;
+    private final StockMovementRepository stockMovementRepository;
 
     public InventoryItemResponse createItem(
             Long farmId,
@@ -76,52 +80,74 @@ public class InventoryItemService {
 
         return toResponse(getFarmItem(itemId, farmId));
     }
+public InventoryItemResponse updateItem(
+        Long farmId,
+        Long itemId,
+        InventoryItemRequest request,
+        Long ownerId) {
 
-    public InventoryItemResponse updateItem(
-            Long farmId,
-            Long itemId,
-            InventoryItemRequest request,
-            Long ownerId) {
+    getOwnedFarm(farmId, ownerId);
 
-        getOwnedFarm(farmId, ownerId);
+    InventoryItem item = getFarmItem(itemId, farmId);
 
-        InventoryItem item = getFarmItem(itemId, farmId);
+    // Prevent direct inventory quantity modification.
+    if (request.getQuantity() == null
+            || request.getQuantity().compareTo(item.getQuantity()) != 0) {
 
-        String itemName = request.getName().trim();
-
-        boolean duplicateExists =
-                inventoryItemRepository.existsByNameIgnoreCaseAndFarmId(
-                        itemName, farmId);
-
-        if (duplicateExists && !item.getName().equalsIgnoreCase(itemName)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "An inventory item with this name already exists in this farm"
-            );
-        }
-
-        item.setName(itemName);
-        item.setCategory(request.getCategory());
-        item.setQuantity(request.getQuantity());
-        item.setUnit(request.getUnit().trim());
-        item.setMinimum(request.getMinimum());
-        item.setExpiryDate(request.getExpiryDate());
-
-        return toResponse(inventoryItemRepository.save(item));
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Inventory quantity cannot be updated directly. "
+                        + "Use stock IN or stock OUT operations."
+        );
     }
+
+    String itemName = request.getName().trim();
+
+    boolean duplicateExists =
+            inventoryItemRepository.existsByNameIgnoreCaseAndFarmId(
+                    itemName, farmId);
+
+    if (duplicateExists && !item.getName().equalsIgnoreCase(itemName)) {
+        throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "An inventory item with this name already exists in this farm"
+        );
+    }
+
+    item.setName(itemName);
+    item.setCategory(request.getCategory());
+    item.setUnit(request.getUnit().trim());
+    item.setMinimum(request.getMinimum());
+    item.setExpiryDate(request.getExpiryDate());
+
+    return toResponse(inventoryItemRepository.save(item));
+}
 
     public void deleteItem(
-            Long farmId,
-            Long itemId,
-            Long ownerId) {
+        Long farmId,
+        Long itemId,
+        Long ownerId) {
 
-        getOwnedFarm(farmId, ownerId);
+    getOwnedFarm(farmId, ownerId);
 
-        InventoryItem item = getFarmItem(itemId, farmId);
+    InventoryItem item = getFarmItem(itemId, farmId);
 
-        inventoryItemRepository.delete(item);
+    boolean hasWarehouseStock =
+            inventoryStockRepository.existsByInventoryItemId(itemId);
+
+    boolean hasStockMovements =
+            stockMovementRepository.existsByInventoryItemId(itemId);
+
+    if (hasWarehouseStock || hasStockMovements) {
+        throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Cannot delete inventory item because warehouse stock "
+                        + "or stock movement history exists."
+        );
     }
 
+    inventoryItemRepository.delete(item);
+}
     private Farm getOwnedFarm(Long farmId, Long ownerId) {
         return farmRepository.findByIdAndOwnerId(farmId, ownerId)
                 .orElseThrow(() -> new ResponseStatusException(

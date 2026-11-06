@@ -25,6 +25,9 @@ public class StockMovementResponse {
 
     private BigDecimal quantity;
 
+    // Remaining stock immediately after this movement
+    private BigDecimal balanceAfter;
+
     private BigDecimal availableQuantity;
 
     private Long supplierId;

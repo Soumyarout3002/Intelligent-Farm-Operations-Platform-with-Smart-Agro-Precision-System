@@ -12,6 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.backend.repository.InventoryStockRepository;
+import com.backend.repository.StockMovementRepository;
+import com.backend.dto.inventory.InventoryStockResponse;
 
 import java.util.List;
 
@@ -22,6 +25,8 @@ public class WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
     private final FarmRepository farmRepository;
+    private final InventoryStockRepository inventoryStockRepository;
+    private final StockMovementRepository stockMovementRepository;
 
     public WarehouseResponse createWarehouse(
             Long farmId,
@@ -111,18 +116,59 @@ public class WarehouseService {
         return toResponse(warehouseRepository.save(warehouse));
     }
 
+    @Transactional(readOnly = true)
+public List<InventoryStockResponse> getWarehouseStocks(
+        Long farmId,
+        Long warehouseId,
+        Long ownerId) {
+
+    // Verify farm ownership
+    getOwnedFarm(farmId, ownerId);
+
+    // Verify warehouse belongs to this farm
+    Warehouse warehouse = getFarmWarehouse(warehouseId, farmId);
+
+    // Fetch warehouse-wise inventory stocks
+    return inventoryStockRepository.findByWarehouseId(warehouseId)
+            .stream()
+            .map(stock -> InventoryStockResponse.builder()
+                    .id(stock.getId())
+                    .inventoryItemId(stock.getInventoryItem().getId())
+                    .itemName(stock.getInventoryItem().getName())
+                    .category(stock.getInventoryItem().getCategory())
+                    .quantity(stock.getQuantity())
+                    .unit(stock.getInventoryItem().getUnit())
+                    .warehouseId(warehouse.getId())
+                    .warehouseName(warehouse.getName())
+                    .build())
+            .toList();
+}
+
     public void deleteWarehouse(
-            Long farmId,
-            Long warehouseId,
-            Long ownerId) {
+        Long farmId,
+        Long warehouseId,
+        Long ownerId) {
 
-        getOwnedFarm(farmId, ownerId);
+    getOwnedFarm(farmId, ownerId);
 
-        Warehouse warehouse = getFarmWarehouse(warehouseId, farmId);
+    Warehouse warehouse = getFarmWarehouse(warehouseId, farmId);
 
-        warehouseRepository.delete(warehouse);
+   boolean hasInventoryStock =
+        inventoryStockRepository.existsByWarehouse_Id(warehouseId);
+
+    boolean hasStockMovements =
+            stockMovementRepository.existsByWarehouse_Id(warehouseId);
+
+    if (hasInventoryStock || hasStockMovements) {
+        throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Cannot delete warehouse because it has inventory stock "
+                + "or stock movement history"
+        );
     }
 
+    warehouseRepository.delete(warehouse);
+}
     private Farm getOwnedFarm(Long farmId, Long ownerId) {
         return farmRepository.findByIdAndOwnerId(farmId, ownerId)
                 .orElseThrow(() -> new ResponseStatusException(

@@ -37,6 +37,9 @@ public class CropActivityRequest {
     // Inventory item used during crop activity
     private Long inventoryItemId;
 
+    // Warehouse from which inventory will be consumed
+    private Long warehouseId;
+
     // Actual quantity consumed from inventory
     @DecimalMin(value = "0.0", inclusive = false,
             message = "Used quantity must be greater than zero")

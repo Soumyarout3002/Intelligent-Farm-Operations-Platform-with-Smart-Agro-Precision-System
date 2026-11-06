@@ -1,6 +1,7 @@
 
 package com.backend.controller;
 
+import com.backend.dto.inventory.InventoryStockResponse;
 import com.backend.dto.inventory.WarehouseRequest;
 import com.backend.dto.inventory.WarehouseResponse;
 import com.backend.entity.User;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.backend.dto.inventory.InventoryStockResponse;
 
 import java.util.List;
 
@@ -58,6 +60,18 @@ public class WarehouseController {
                 warehouseService.getWarehouseById(
                         farmId, warehouseId, user.getId()));
     }
+    @GetMapping("/{warehouseId}/stocks")
+public ResponseEntity<List<InventoryStockResponse>> getWarehouseStocks(
+        @PathVariable Long farmId,
+        @PathVariable Long warehouseId,
+        HttpServletRequest request) {
+
+    User user = getAuthenticatedUser(request);
+
+    return ResponseEntity.ok(
+            warehouseService.getWarehouseStocks(
+                    farmId, warehouseId, user.getId()));
+}
 
     @PutMapping("/{warehouseId}")
     public ResponseEntity<WarehouseResponse> updateWarehouse(
