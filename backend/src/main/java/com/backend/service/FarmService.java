@@ -41,6 +41,8 @@ public class FarmService {
                 .soilType(request.getSoilType())
                 .primaryCrop(request.getPrimaryCrop())
                 .notes(request.getNotes())
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
                 .owner(owner)
                 .build();
 
@@ -73,6 +75,18 @@ public class FarmService {
         farm.setPrimaryCrop(request.getPrimaryCrop());
         farm.setNotes(request.getNotes());
 
+        if ((request.getLatitude() == null) !=
+        (request.getLongitude() == null)) {
+            
+            throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "Latitude and longitude must be provided together");
+        }
+        if (request.getLatitude() != null) {
+            farm.setLatitude(request.getLatitude());
+            farm.setLongitude(request.getLongitude());
+        }
+
         return toResponse(farmRepository.save(farm));
     }
 
@@ -104,10 +118,21 @@ public class FarmService {
                 .primaryCrop(farm.getPrimaryCrop())
                 .status(farm.getStatus())
                 .notes(farm.getNotes())
+                .latitude(farm.getLatitude())
+                .location(farm.getLocation())
                 .ownerId(farm.getOwner().getId())
                 .ownerName(farm.getOwner().getName())
                 .createdAt(farm.getCreatedAt())
                 .updatedAt(farm.getUpdatedAt())
                 .build();
     }
+
+    private void validateCoordinates(Double latitude, Double longitude) {
+    if ((latitude == null) != (longitude == null)) {
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Latitude and longitude must be provided together"
+        );
+    }
+}
 }
