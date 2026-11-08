@@ -23,6 +23,8 @@ public class FarmResponse {
     private String primaryCrop;
     private String status;
     private String notes;
+    private Double latitude;
+    private Double longitude;
     private Long ownerId;
     private String ownerName;
     private LocalDateTime createdAt;

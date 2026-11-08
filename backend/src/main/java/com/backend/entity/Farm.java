@@ -44,6 +44,12 @@ public class Farm {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Column
+    private Double latitude;
+    
+    @Column
+    private Double longitude;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
