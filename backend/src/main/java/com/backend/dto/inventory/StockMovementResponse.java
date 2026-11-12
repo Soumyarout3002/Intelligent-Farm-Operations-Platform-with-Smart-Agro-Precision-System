@@ -41,4 +41,12 @@ public class StockMovementResponse {
     private String remarks;
 
     private LocalDateTime createdAt;
+
+    private BigDecimal unitCost;
+
+    private BigDecimal totalCost;
+
+    private BigDecimal valuedQuantityConsumed;
+
+    private BigDecimal unvaluedQuantityConsumed;
 }

@@ -25,6 +25,10 @@ public class EquipmentUsage {
     @JoinColumn(name = "equipment_id", nullable = false)
     private Equipment equipment;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "crop_cycle_id")
+    private CropCycle cropCycle;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "recorded_by", nullable = false)
     private User recordedBy;
@@ -54,4 +58,5 @@ public class EquipmentUsage {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
+
 }

@@ -14,6 +14,7 @@ public class EquipmentUsageResponse {
 
     private Long id;
     private Long equipmentId;
+    private Long cropCycleId;
     private String equipment;
     private Long recordedById;
     private String recordedBy;

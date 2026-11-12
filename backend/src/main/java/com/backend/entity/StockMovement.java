@@ -35,6 +35,12 @@ public class StockMovement {
     private BigDecimal quantity;
 
     @Column(precision = 12, scale = 2)
+    private BigDecimal unitCost;
+
+    @Column(precision = 14, scale = 2)
+    private BigDecimal totalCost;
+
+    @Column(precision = 12, scale = 2)
     private BigDecimal balanceAfter;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -64,4 +70,9 @@ public class StockMovement {
         IN,
         OUT
     }
+    @Column(precision = 12, scale = 2)
+    private BigDecimal valuedQuantityConsumed;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal unvaluedQuantityConsumed;
 }

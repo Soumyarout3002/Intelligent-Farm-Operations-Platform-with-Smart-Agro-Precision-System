@@ -35,6 +35,23 @@ public class EquipmentUsageController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+
+    @PatchMapping("/usage/{usageId}/crop-cycle/{cropCycleId}")
+    public ResponseEntity<EquipmentUsageResponse> assignCropCycle(
+            @PathVariable Long farmId,
+            @PathVariable Long usageId,
+            @PathVariable Long cropCycleId,
+            HttpServletRequest httpRequest) {
+
+        User user = getAuthenticatedUser(httpRequest);
+
+        return ResponseEntity.ok(
+                usageService.assignCropCycle(
+                        farmId, usageId, cropCycleId, user.getId())
+        );
+    }
+
+
     @GetMapping("/usage")
     public ResponseEntity<List<EquipmentUsageResponse>> getFarmUsage(
             @PathVariable Long farmId,

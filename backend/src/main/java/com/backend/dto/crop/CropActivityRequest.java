@@ -44,4 +44,8 @@ public class CropActivityRequest {
     @DecimalMin(value = "0.0", inclusive = false,
             message = "Used quantity must be greater than zero")
     private BigDecimal usedQuantity;
+
+    // Actual expense incurred for this crop activity
+    @DecimalMin(value = "0.0", message = "Activity cost cannot be negative")
+    private BigDecimal activityCost;
 }

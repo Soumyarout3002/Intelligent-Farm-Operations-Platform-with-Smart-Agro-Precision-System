@@ -15,6 +15,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.backend.entity.CropCycle;
+import com.backend.repository.CropCycleRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -28,6 +30,7 @@ public class EquipmentUsageService {
     private final EquipmentUsageRepository usageRepository;
     private final EquipmentRepository equipmentRepository;
     private final FarmRepository farmRepository;
+    private final CropCycleRepository cropCycleRepository;
 
     public EquipmentUsageResponse recordUsage(
             Long farmId,
@@ -58,11 +61,30 @@ public class EquipmentUsageService {
                     "Operating hours must be greater than zero");
         }
 
+        // Validate optional crop cycle
+        CropCycle cropCycle = null;
+
+        if (request.getCropCycleId() != null) {
+
+            cropCycle = cropCycleRepository.findById(request.getCropCycleId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Crop cycle not found"));
+
+            // Ensure crop cycle belongs to the same farm
+            if (!cropCycle.getPlot().getFarm().getId().equals(farmId)) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Crop cycle not found in this farm");
+            }
+        }
+
         BigDecimal fuelCost = zeroIfNull(request.getFuelCost());
         BigDecimal usageCost = zeroIfNull(request.getUsageCost());
 
         EquipmentUsage usage = EquipmentUsage.builder()
                 .equipment(equipment)
+                .cropCycle(cropCycle)
                 .recordedBy(user)
                 .usageDate(request.getUsageDate())
                 .operatingHours(request.getOperatingHours())
@@ -71,6 +93,43 @@ public class EquipmentUsageService {
                 .usageCost(usageCost)
                 .notes(trimToNull(request.getNotes()))
                 .build();
+
+        return toResponse(usageRepository.save(usage));
+    }
+
+
+    public EquipmentUsageResponse assignCropCycle(
+            Long farmId,
+            Long usageId,
+            Long cropCycleId,
+            Long ownerId) {
+
+        Farm farm = farmRepository.findByIdAndOwnerId(farmId, ownerId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Farm not found or access denied"));
+
+        EquipmentUsage usage = usageRepository
+        .findByEquipmentFarmIdOrderByUsageDateDesc(farm.getId())
+        .stream()
+        .filter(item -> item.getId().equals(usageId))
+        .findFirst()
+        .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Equipment usage record not found"));
+
+        CropCycle cropCycle = cropCycleRepository.findById(cropCycleId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Crop cycle not found"));
+
+        if (!cropCycle.getPlot().getFarm().getId().equals(farmId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Crop cycle not found in this farm");
+        }
+
+        usage.setCropCycle(cropCycle);
 
         return toResponse(usageRepository.save(usage));
     }
@@ -114,6 +173,7 @@ public class EquipmentUsageService {
         }
     }
 
+
     private EquipmentUsageResponse toResponse(EquipmentUsage usage) {
         BigDecimal fuelCost = zeroIfNull(usage.getFuelCost());
         BigDecimal usageCost = zeroIfNull(usage.getUsageCost());
@@ -121,6 +181,11 @@ public class EquipmentUsageService {
         return EquipmentUsageResponse.builder()
                 .id(usage.getId())
                 .equipmentId(usage.getEquipment().getId())
+                .cropCycleId(
+                        usage.getCropCycle() != null
+                                ? usage.getCropCycle().getId()
+                                : null
+                )
                 .equipment(usage.getEquipment().getName())
                 .recordedById(usage.getRecordedBy().getId())
                 .recordedBy(usage.getRecordedBy().getName())

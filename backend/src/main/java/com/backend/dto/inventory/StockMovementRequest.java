@@ -27,4 +27,16 @@ public class StockMovementRequest {
 
     @Size(max = 500, message = "Remarks cannot exceed 500 characters")
     private String remarks;
+
+    // Purchase price per unit (required only for stock IN)
+    @DecimalMin(
+            value = "0.01",
+            message = "Unit cost must be greater than zero"
+    )
+    @Digits(
+            integer = 10,
+            fraction = 2,
+            message = "Unit cost can have up to 10 integer digits and 2 decimal places"
+    )
+    private BigDecimal unitCost;
 }
