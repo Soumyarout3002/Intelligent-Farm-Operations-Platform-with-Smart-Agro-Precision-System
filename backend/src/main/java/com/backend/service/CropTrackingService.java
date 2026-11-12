@@ -28,10 +28,16 @@ public class CropTrackingService {
     );
 
     private static final Set<String> VALID_ACTIVITIES = Set.of(
-            "IRRIGATION", "FERTILIZATION", "WEEDING",
+            "IRRIGATION", "FERTILIZATION","SEEDING", "WEEDING",
             "PRUNING", "PEST_CONTROL", "SOIL_PREPARATION",
             "SPRAYING", "OTHER"
     );
+    private static final Set<String> INVENTORY_CONSUMING_ACTIVITIES = Set.of(
+        "FERTILIZATION",
+        "SEEDING",
+        "PEST_CONTROL",
+        "SPRAYING"
+);
 
     public CropTrackingService(
         GrowthStageRecordRepository stageRepository,
@@ -135,17 +141,17 @@ public CropActivityResponse addActivity(
             request.getActivityType().trim().toUpperCase();
 
     // Validate inventory details for fertilization
-    if ("FERTILIZATION".equals(activityType)) {
+    if (INVENTORY_CONSUMING_ACTIVITIES.contains(activityType)) {
 
         if (request.getInventoryItemId() == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Inventory item is required for fertilization");
+                    "Inventory item is required for this activity");
         }
         if (request.getWarehouseId() == null) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        "Warehouse is required for fertilization");
+                        "Warehouse is required for this activity");
                 }
 
         if (request.getUsedQuantity() == null
@@ -166,8 +172,13 @@ public CropActivityResponse addActivity(
     activity.setDescription(request.getDescription());
     activity.setQuantity(request.getQuantity());
     activity.setPerformedBy(request.getPerformedBy());
+    activity.setActivityCost(
+        request.getActivityCost() != null
+                ? request.getActivityCost()
+                : java.math.BigDecimal.ZERO
+);
 
-    if ("FERTILIZATION".equals(activityType)) {
+    if (INVENTORY_CONSUMING_ACTIVITIES.contains(activityType)) {
 
         activity.setUsedQuantity(request.getUsedQuantity());
 
@@ -219,13 +230,23 @@ public CropActivityResponse addActivity(
         String newActivityType =
         request.getActivityType().trim().toUpperCase();
 
-if ("FERTILIZATION".equals(newActivityType)) {
+if (INVENTORY_CONSUMING_ACTIVITIES.contains(newActivityType)) {
     throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST,
-            "Fertilization activities cannot be updated. "
-                    + "Create a new activity to deduct inventory stock."
+            "Inventory-consuming activities cannot be updated. "
+        + "Create a new activity instead."
     );
 }
+// Automatically deduct inventory stock used during crop activity
+if (INVENTORY_CONSUMING_ACTIVITIES.contains(
+        activity.getActivityType())) {
+    throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "Inventory-consuming activities cannot be updated. "
+                    + "Create a new activity instead."
+    );
+}
+
 
         if (stockMovementService.hasMovementForCropActivity(activityId)) {
                 throw new ResponseStatusException(
@@ -239,6 +260,11 @@ if ("FERTILIZATION".equals(newActivityType)) {
         activity.setDescription(request.getDescription());
         activity.setQuantity(request.getQuantity());
         activity.setPerformedBy(request.getPerformedBy());
+        activity.setActivityCost(
+        request.getActivityCost() != null
+                ? request.getActivityCost()
+                : java.math.BigDecimal.ZERO
+);
 
 
 
@@ -351,7 +377,8 @@ private CropActivityResponse mapActivity(CropActivity activity) {
             activity.getInventoryItem() != null
                     ? activity.getInventoryItem().getName() : null,
 
-            activity.getUsedQuantity()
+            activity.getUsedQuantity(),
+            activity.getActivityCost()
     );
 }
 

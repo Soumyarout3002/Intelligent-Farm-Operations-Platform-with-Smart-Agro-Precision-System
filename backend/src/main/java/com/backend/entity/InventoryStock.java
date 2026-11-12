@@ -39,6 +39,18 @@ public class InventoryStock {
     @Builder.Default
     private BigDecimal quantity = BigDecimal.ZERO;
 
+    @Column(nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal valuedQuantity = BigDecimal.ZERO;
+
+    @Column(precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal averageUnitCost = BigDecimal.ZERO;
+
+    @Column(precision = 14, scale = 2)
+    @Builder.Default
+    private BigDecimal stockValue = BigDecimal.ZERO;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

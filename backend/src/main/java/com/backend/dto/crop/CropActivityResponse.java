@@ -30,4 +30,5 @@ public class CropActivityResponse {
     private Long inventoryItemId;
     private String inventoryItemName;
     private BigDecimal usedQuantity;
+    private BigDecimal activityCost;
 }

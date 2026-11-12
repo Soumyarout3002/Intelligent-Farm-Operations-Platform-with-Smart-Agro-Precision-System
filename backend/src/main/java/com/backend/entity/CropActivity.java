@@ -47,6 +47,9 @@ public class CropActivity {
     @Column(precision = 12, scale = 2)
     private BigDecimal usedQuantity;
 
+    @Column(precision = 12, scale = 2)
+    private BigDecimal activityCost;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

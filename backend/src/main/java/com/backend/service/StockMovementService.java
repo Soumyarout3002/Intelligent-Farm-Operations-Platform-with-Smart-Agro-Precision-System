@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import java.math.RoundingMode;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -131,6 +132,42 @@ private InventoryStock getOrCreateWarehouseStock(
     BigDecimal movementQuantity = overrideQuantity != null
             ? overrideQuantity
             : request.getQuantity();
+//1
+        BigDecimal unitCost = null;
+        BigDecimal totalCost = null;
+        BigDecimal valuedQuantityConsumed = BigDecimal.ZERO;
+        BigDecimal unvaluedQuantityConsumed = BigDecimal.ZERO;
+
+        if (type == MovementType.IN) {
+
+        if (request.getUnitCost() == null
+                || request.getUnitCost().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Unit cost is required for stock IN"
+                );
+        }
+
+        // Purchase cost for this stock IN movement
+        unitCost = request.getUnitCost()
+                .setScale(2, RoundingMode.HALF_UP);
+
+        totalCost = movementQuantity.multiply(unitCost)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        } else {
+
+        if (request != null && request.getUnitCost() != null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Unit cost must not be provided for stock OUT"
+                );
+        }
+
+        // Stock OUT uses the warehouse's weighted-average cost
+        // Cost will be calculated after warehouse stock is loaded.
+        }
+
 
     // Validate supplier
     Supplier supplier = null;
@@ -161,6 +198,18 @@ private InventoryStock getOrCreateWarehouseStock(
     BigDecimal currentWarehouseQuantity =
             warehouseStock.getQuantity();
 
+    BigDecimal valuedQuantity =
+        warehouseStock.getValuedQuantity() != null
+                ? warehouseStock.getValuedQuantity()
+                : BigDecimal.ZERO;
+
+BigDecimal currentStockValue =
+        warehouseStock.getStockValue() != null
+                ? warehouseStock.getStockValue()
+                : BigDecimal.ZERO;
+
+
+
     BigDecimal currentQuantity = item.getQuantity();
 
     BigDecimal updatedWarehouseQuantity;
@@ -171,35 +220,118 @@ private InventoryStock getOrCreateWarehouseStock(
         updatedWarehouseQuantity =
                 currentWarehouseQuantity.add(movementQuantity);
 
+        BigDecimal newValuedQuantity =
+        valuedQuantity.add(movementQuantity);
+
+BigDecimal newStockValue =
+        currentStockValue.add(totalCost)
+                .setScale(2, RoundingMode.HALF_UP);
+
+BigDecimal newAverageCost =
+        newStockValue.divide(
+                newValuedQuantity,
+                2,
+                RoundingMode.HALF_UP
+        );
+
+warehouseStock.setValuedQuantity(newValuedQuantity);
+warehouseStock.setStockValue(newStockValue);
+warehouseStock.setAverageUnitCost(newAverageCost);
+
         updatedQuantity =
                 currentQuantity.add(movementQuantity);
 
-    } else {
 
-        if (currentWarehouseQuantity.compareTo(movementQuantity) < 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Insufficient stock in selected warehouse. Available: "
-                            + currentWarehouseQuantity);
-        }
+} else {
 
-        if (currentQuantity.compareTo(movementQuantity) < 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Insufficient total farm stock. Available: "
-                            + currentQuantity);
-        }
-
-        updatedWarehouseQuantity =
-                currentWarehouseQuantity.subtract(movementQuantity);
-
-        updatedQuantity =
-                currentQuantity.subtract(movementQuantity);
+    // 1. Validate available stock
+    if (currentWarehouseQuantity.compareTo(movementQuantity) < 0) {
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Insufficient stock in selected warehouse. Available: "
+                        + currentWarehouseQuantity);
     }
 
-    // Update warehouse stock
-    warehouseStock.setQuantity(updatedWarehouseQuantity);
-    inventoryStockRepository.save(warehouseStock);
+    if (currentQuantity.compareTo(movementQuantity) < 0) {
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Insufficient total farm stock. Available: "
+                        + currentQuantity);
+    }
+
+    // 2. Calculate updated physical quantity
+    updatedWarehouseQuantity =
+            currentWarehouseQuantity.subtract(movementQuantity);
+
+    updatedQuantity =
+            currentQuantity.subtract(movementQuantity);
+
+    // 3. Separate valued and unvalued stock
+    BigDecimal unvaluedQuantity =
+            currentWarehouseQuantity.subtract(valuedQuantity)
+                    .max(BigDecimal.ZERO);
+
+    // Consume unvalued stock first
+    BigDecimal unvaluedConsumed =
+            movementQuantity.min(unvaluedQuantity);
+
+    BigDecimal valuedConsumed =
+            movementQuantity.subtract(unvaluedConsumed);
+
+unvaluedQuantityConsumed = unvaluedConsumed;
+valuedQuantityConsumed = valuedConsumed;
+
+    // 4. Calculate cost only for valued stock consumed
+    if (valuedConsumed.compareTo(BigDecimal.ZERO) > 0) {
+
+        BigDecimal averageCost = warehouseStock.getAverageUnitCost();
+
+        if (averageCost == null
+                || averageCost.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Valued stock cost is unavailable.");
+        }
+
+        unitCost = averageCost.setScale(2, RoundingMode.HALF_UP);
+
+        totalCost = valuedConsumed.multiply(unitCost)
+                .setScale(2, RoundingMode.HALF_UP);
+
+    } else {
+        // Cost is unknown for unvalued stock
+        unitCost = null;
+        totalCost = null;
+    }
+
+    // 5. Reduce valued quantity and stock value
+    BigDecimal remainingValuedQuantity =
+            valuedQuantity.subtract(valuedConsumed);
+
+    BigDecimal remainingStockValue =
+            currentStockValue.subtract(
+                    totalCost != null ? totalCost : BigDecimal.ZERO)
+                    .setScale(2, RoundingMode.HALF_UP);
+
+    warehouseStock.setValuedQuantity(remainingValuedQuantity);
+    warehouseStock.setStockValue(remainingStockValue);
+
+    // 6. Recalculate weighted average cost
+    BigDecimal remainingAverageCost =
+            remainingValuedQuantity.compareTo(BigDecimal.ZERO) > 0
+                    ? remainingStockValue.divide(
+                            remainingValuedQuantity,
+                            2,
+                            RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+
+    warehouseStock.setAverageUnitCost(remainingAverageCost);
+}
+
+
+        warehouseStock.setQuantity(updatedWarehouseQuantity);
+
+        inventoryStockRepository.save(warehouseStock);
 
     // Update farm-level aggregate stock
     item.setQuantity(updatedQuantity);
@@ -217,6 +349,10 @@ private InventoryStock getOrCreateWarehouseStock(
             .inventoryItem(item)
             .type(type)
             .quantity(movementQuantity)
+            .unitCost(unitCost)
+            .totalCost(totalCost)
+            .valuedQuantityConsumed(valuedQuantityConsumed)
+            .unvaluedQuantityConsumed(unvaluedQuantityConsumed)
             .balanceAfter(updatedWarehouseQuantity)
             .supplier(supplier)
             .warehouse(warehouse)
@@ -287,6 +423,10 @@ private InventoryStock getOrCreateWarehouseStock(
                 .itemName(movement.getInventoryItem().getName())
                 .type(movement.getType())
                 .quantity(movement.getQuantity())
+                .unitCost(movement.getUnitCost())
+                .totalCost(movement.getTotalCost())
+                .valuedQuantityConsumed(movement.getValuedQuantityConsumed())
+                .unvaluedQuantityConsumed(movement.getUnvaluedQuantityConsumed())
                 .balanceAfter(movement.getBalanceAfter())
                 .availableQuantity(availableQuantity)
                 .supplierId(movement.getSupplier() != null
