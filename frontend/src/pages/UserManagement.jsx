@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Search, Eye, Pencil, Trash2 } from 'lucide-react';
-import { listUsers, createUser, updateUser, setStatus, deleteUser } from '../services/userService';
+import { listUsers, createUser, updateUser, setStatus, deleteUser, createInvitation } from '../services/userService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import Modal from '../components/Modal';
@@ -19,7 +19,7 @@ function UserForm({ initial, isSelf, onSubmit, onCancel }) {
     { name: 'mobile', label: 'Mobile number', type: 'tel' },
     ...(editing
   ? [{ name: 'role', label: 'Role', type: 'select', options: ROLES, disabled: true }]
-  : [{ name: 'role', label: 'Role', type: 'select', options: ROLES, required: true }]),
+  : [{ name: 'role', label: 'Role', type: 'select', options: ['farmer'], required: true }]),
     ...(editing ? [] : [{ name: 'status', label: 'Status', type: 'select', options: STATUS, required: true }, { name: 'password', label: 'Temporary password', type: 'password', required: true }]),
   ];
   const [values, setValues] = useState(initial || { role: 'farmer', status: 'active' });
@@ -50,6 +50,10 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [q, setQ] = useState('');
   const [role, setRole] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('field_worker');
+  const [inviteLink, setInviteLink] = useState('');
+  const [inviteBusy, setInviteBusy] = useState(false);
   const [modal, setModal] = useState(null); // {type:'add'|'edit'|'view'|'delete', user}
   const reload = useCallback(() => listUsers().then(setUsers), []);
   useEffect(() => { reload(); }, [reload]);
@@ -79,6 +83,26 @@ export default function UserManagement() {
         {shown.length} user(s). Manage registered users and their access.
       </p></div>
         <button className="btn primary" onClick={() => setModal({ type: 'add' })}><Plus size={16} /> Add user</button></div>
+      <section className="card" style={{ marginBottom: 18 }}>
+        <h3>Invite a team member</h3>
+        <p className="muted">Create a single-use invitation link valid for 7 days. Send it to the invited person.</p>
+        <form className="row" onSubmit={async (e) => {
+          e.preventDefault(); setInviteBusy(true); setInviteLink('');
+          try {
+            const result = await createInvitation(inviteEmail, inviteRole);
+            const link = `${window.location.origin}/register?invite=${encodeURIComponent(result.token)}`;
+            setInviteLink(link); setInviteEmail('');
+          } catch (err) { toast(err.message, 'error'); }
+          finally { setInviteBusy(false); }
+        }}>
+          <input type="email" required placeholder="Invitee email" value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} />
+          <select value={inviteRole} onChange={e=>setInviteRole(e.target.value)}>
+            <option value="farmer">Farmer</option><option value="field_worker">Field Worker</option><option value="admin">Admin</option>
+          </select>
+          <button className="btn primary" disabled={inviteBusy}>{inviteBusy ? 'Creating…' : 'Create invitation'}</button>
+        </form>
+        {inviteLink && <div className="alert success" style={{marginTop:12}}>Invitation link (copy and send securely): <input readOnly value={inviteLink} onFocus={e=>e.target.select()} /><button className="btn ghost" type="button" onClick={()=>navigator.clipboard.writeText(inviteLink)}>Copy link</button></div>}
+      </section>
       <div className="toolbar">
         <div className="search"><Search size={16} /><input aria-label="Search users" placeholder="Search by name or email" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         <select aria-label="Filter by role" value={role} onChange={(e) => setRole(e.target.value)}><option value="">All roles</option>{ROLES.map((r) => (

@@ -1,4 +1,4 @@
-.auth { position: relative; min-height: 100vh; display: grid; grid-template-columns: 6fr 5fr; overflow: hidden; background: #1c4720 url('/images/login-bg.png') center / cover no-repeat; }
+.auth { position: relative; min-height: 100vh; display: grid; grid-template-columns: 6fr 5fr; overflow: hidden; background: #1c4720 url('/images/login-bg.jpg') center / cover no-repeat; }
 .auth::before { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(90deg, rgba(10, 35, 18, .6) 0, rgba(10, 35, 18, .25) 50%, rgba(10, 35, 18, .05) 100%); }
 .auth-brand, .auth-panel { position: relative; z-index: 1; }
 .auth-brand { color: #fff; padding: 48px; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; padding-top: 18vh; text-shadow: 0 2px 14px rgba(20, 40, 15, .55); }
@@ -24,7 +24,7 @@
       rgba(13, 63, 37, 0.48) 48%,
       rgba(14, 52, 31, 0.18) 100%
     ),
-    url("/farm-login.jpg") center center / cover no-repeat;
+   url("/images/login-bg.jpg") center center / cover no-repeat;
 
   min-height: 100vh;
 }
@@ -53,7 +53,7 @@
       rgba(7, 45, 26, 0.65),
       rgba(7, 45, 26, 0.15)
     ),
-    url('/farm-login.jpg');
+   url('/images/login-bg.jpg');
 
   background-size: cover;
   background-position: center;

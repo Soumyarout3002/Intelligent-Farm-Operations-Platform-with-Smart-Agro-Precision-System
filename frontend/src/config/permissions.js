@@ -8,6 +8,8 @@ import {
   Wrench,
   CalendarDays,
   ClipboardList,
+  CloudSun,
+  Bell,
 } from 'lucide-react';
 
 // Frontend role permissions.
@@ -21,6 +23,8 @@ export const ROLE_PERMISSIONS = {
     'equipment',
     'equipmentBookings',
     'resources',
+    'weather',
+    'notifications',
   ],
 
   field_worker: [
@@ -30,6 +34,8 @@ export const ROLE_PERMISSIONS = {
     'equipment',
     'equipmentBookings',
     'resources',
+    'weather',
+    'notifications',
   ],
 
   admin: [
@@ -42,6 +48,8 @@ export const ROLE_PERMISSIONS = {
     'equipment',
     'equipmentBookings',
     'resources',
+    'weather',
+    'notifications',
   ],
 };
 
@@ -90,6 +98,18 @@ export const NAV_ITEMS = [
     label: 'Farm Resource Planning',
     path: '/resources',
     icon: ClipboardList,
+  },
+  {
+    key: 'weather',
+    label: 'Weather Monitoring',
+    path: '/weather',
+    icon: CloudSun,
+  },
+  {
+    key: 'notifications',
+    label: 'Notifications',
+    path: '/notifications',
+    icon: Bell,
   },
   {
     key: 'profile',
