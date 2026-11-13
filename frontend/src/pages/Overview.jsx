@@ -6,8 +6,9 @@ import { listFarms } from '../services/farmService';
 import { listUsers } from '../services/userService';
 import { can, cap } from '../config/permissions';
 import SunriseScene from '../components/SunriseScene';
+import { getActivityLogs } from '../services/activityLogService';
 
-const ACTIVITIES = ['Irrigation schedule reviewed (Plot 3)', 'Soil sample submitted', 'Harvest planning meeting noted', 'Seed inventory updated'];
+
 const TASKS = [['Inspect irrigation lines', 'Today'], ['Review soil test results', 'Tomorrow'], ['Update crop calendar', 'This week'], ['Check storage inventory', 'This week']];
 const toHa = (f) => (f.unit === 'hectares' ? f.area : f.area * 0.4047);
 
@@ -31,9 +32,38 @@ export default function Overview() {
   const [farms, setFarms] = useState([]);
   const [users, setUsers] = useState([]);
   const [done, setDone] = useState({});
-  useEffect(() => { listFarms().then(setFarms); listUsers().then(setUsers); }, []);
+    const [activities, setActivities] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState('');
 
   const isAdmin = can(user.role, 'users');
+  
+  useEffect(() => {
+    listFarms()
+      .then(setFarms)
+      .catch(console.error);
+
+    if (isAdmin) {
+      listUsers()
+        .then(setUsers)
+        .catch(console.error);
+
+      setActivityLoading(true);
+      setActivityError('');
+
+      getActivityLogs({ page: 0, size: 5 })
+        .then((data) => {
+          setActivities(data.content || []);
+        })
+        .catch((error) => {
+          setActivityError(error.message);
+        })
+        .finally(() => {
+          setActivityLoading(false);
+        });
+    }
+  }, [isAdmin]);
+
   const stats = useMemo(() => {
     const count = (key) => Object.entries(farms.reduce((m, f) => ({ ...m, [f[key]]: (m[f[key]] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]);
     const byArea = [...farms].sort((a, b) => toHa(b) - toHa(a)).slice(0, 5).map((f) => [f.name, +toHa(f).toFixed(1)]);
@@ -62,7 +92,10 @@ export default function Overview() {
         <div className="hero-text"><h1>Welcome, {user.name}!</h1><p>{cap(user.role)} dashboard · {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
         <span className="tagpill">Demo build</span>
       </div>
-      <div className="alert info">Farm and user figures come from demo data in your browser. Weather, tasks and activities are sample values. No real farm, weather or database services are connected.</div>
+      <div className="alert info">
+  Farm figures, weather and tasks may contain demo data.
+  Recent activities are fetched from the backend.
+</div>
 
       <div className="cards">
         {cards.map((c) => <div className="card stat" key={c.label}><c.icon size={22} /><div><strong>{c.value}</strong><span>{c.label}</span></div></div>)}
@@ -105,7 +138,143 @@ export default function Overview() {
         ) : (
           <div className="card"><h3>Soil types</h3><Bars items={stats.soil} max={stats.soil[0]?.[1]} /></div>
         )}
-        <div className="card"><h3>Recent activities <small className="tagpill">Demo data</small></h3><ul className="plain">{ACTIVITIES.map((a) => <li key={a}>{a}</li>)}</ul></div>
+        
+
+
+
+<div
+  className="card recent-activity-card"
+  style={{ padding: '22px 24px', minWidth: 0 }}
+>
+  {/* Header */}
+  <div
+    style={{
+      display: 'flex',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 16,
+    }}
+  >
+    <div>
+      <h3 style={{ margin: 0, fontSize: 19 }}>
+        Recent Activities
+      </h3>
+      <p style={{ margin: '4px 0 0', fontSize: 12, color: '#87968d' }}>
+        Latest system events
+      </p>
+    </div>
+
+    {isAdmin && (
+      <Link
+        to="/activity-history"
+        style={{
+          color: '#42b879',
+          textDecoration: 'none',
+          fontSize: 13,
+          fontWeight: 600,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        View all →
+      </Link>
+    )}
+  </div>
+
+  {/* Activity List */}
+  {activityLoading ? (
+    <p className="muted">Loading activities...</p>
+  ) : activityError ? (
+    <p className="alert error">{activityError}</p>
+  ) : activities.length === 0 ? (
+    <p className="muted">No activities recorded yet.</p>
+  ) : (
+    <div>
+      {activities.map((activity, index) => {
+        const action = activity.actionType || '';
+        const color = action.includes('DELETED')
+          ? '#42b879'
+          : action.includes('DEACTIVATED')
+          ? '#42b879'
+          : action.includes('ACTIVATED') || action.includes('CREATED')
+          ? '#42b879'
+          : '#42b879';
+
+        return (
+          <div
+            key={activity.id}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(130px, 0.9fr) minmax(0, 2fr) 115px',
+              alignItems: 'center',
+              gap: 14,
+              padding: '12px 0',
+              borderBottom:
+                index === activities.length - 1
+                  ? 'none'
+                  : '1px solid rgba(255,255,255,0.10)',
+            }}
+          >
+            {/* Action */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  minWidth: 8,
+                  borderRadius: '50%',
+                  background: color,
+                }}
+              />
+              <strong
+                style={{
+                  fontSize: 11,
+                  lineHeight: 1.5,
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {action.replaceAll('_', ' ')}
+              </strong>
+            </div>
+
+            {/* Description */}
+            <span
+              style={{
+                fontSize: 12,
+                lineHeight: 1.5,
+                color: '#bdcbc2',
+                minWidth: 0,
+              }}
+            >
+              {activity.description}
+            </span>
+
+            {/* Date */}
+            <time
+              style={{
+                fontSize: 11,
+                color: '#87968d',
+                textAlign: 'right',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {new Date(activity.createdAt).toLocaleDateString()}
+              <br />
+              {new Date(activity.createdAt).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </time>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</div>
+
+
+
       </div>
 
       <div className="card">

@@ -12,7 +12,6 @@ class BackendApplicationTests {
 
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
-
         Dotenv dotenv = Dotenv.configure()
                 .directory(".")
                 .ignoreIfMissing()
@@ -20,8 +19,7 @@ class BackendApplicationTests {
 
         String url = System.getenv("DB_URL");
         if (url == null || url.isBlank()) {
-            url = dotenv.get(
-                    "DB_URL",
+            url = dotenv.get("DB_URL",
                     "jdbc:mysql://localhost:3306/farmverse_nexus");
         }
 
@@ -32,16 +30,19 @@ class BackendApplicationTests {
 
         String password = System.getenv("DB_PASSWORD");
         if (password == null) {
-            password = dotenv.get("DB_PASSWORD", "");
+            password = dotenv.get("DB_PASSWORD");
         }
 
         final String dbUrl = url;
-        final String dbUsername = username;
-        final String dbPassword = password;
+final String dbUsername = username;
+final String dbPassword = password;
 
-        registry.add("spring.datasource.url", () -> dbUrl);
-        registry.add("spring.datasource.username", () -> dbUsername);
-        registry.add("spring.datasource.password", () -> dbPassword);
+registry.add("spring.datasource.url", () -> dbUrl);
+registry.add("spring.datasource.username", () -> dbUsername);
+
+if (dbPassword != null) {
+    registry.add("spring.datasource.password", () -> dbPassword);
+}
     }
 
     @Test
