@@ -6,7 +6,7 @@ import { useToast } from '../components/Toast';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Field from '../components/Field';
-import { ROLES, cap, roleLabel } from '../config/permissions';
+import { ROLES, cap } from '../config/permissions';
 import { validateFields } from '../utils/validation';
 
 const STATUS = ['active', 'inactive'];
@@ -81,11 +81,7 @@ export default function UserManagement() {
         <button className="btn primary" onClick={() => setModal({ type: 'add' })}><Plus size={16} /> Add user</button></div>
       <div className="toolbar">
         <div className="search"><Search size={16} /><input aria-label="Search users" placeholder="Search by name or email" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-        <select aria-label="Filter by role" value={role} onChange={(e) => setRole(e.target.value)}><option value="">All roles</option>{ROLES.map((r) => (
-  <option key={r} value={r}>
-    {roleLabel(r)}
-  </option>
-))}</select>
+        <select aria-label="Filter by role" value={role} onChange={(e) => setRole(e.target.value)}><option value="">All roles</option>{ROLES.map((r) => <option key={r} value={r}>{cap(r)}</option>)}</select>
       </div>
       {shown.length === 0 ? <div className="empty"><p>No users match your search.</p></div> : (
         <div className="table-wrap card"><table>
@@ -95,11 +91,7 @@ export default function UserManagement() {
             return (
               <tr key={u.id}>
                 <td><strong>{u.name}</strong>{self && <small className="tagpill">You</small>}</td><td>{u.email}</td>
-               <td>
-  <span className={`badge ${u.role}`}>
-    {roleLabel(u.role)}
-  </span>
-</td>
+                <td><span className={`badge ${u.role}`}>{cap(u.role)}</span></td>
                 <td><select className="status-select" aria-label={`Status for ${u.name}`} value={u.status} disabled={self} onChange={(e) => changeStatus(u, e.target.value)}>{STATUS.map((s) => <option key={s} value={s}>{cap(s)}</option>)}</select></td>
                 <td className="row-actions">
                   <button className="icon-btn" aria-label={`View ${u.name}`} onClick={() => setModal({ type: 'view', user: u })}><Eye size={16} /></button>
@@ -111,7 +103,7 @@ export default function UserManagement() {
       )}
       {modal?.type === 'view' && (
         <Modal title="User details" onClose={close}>
-          <dl className="details one">{[['Name', modal.user.name], ['Email', modal.user.email], ['Mobile', modal.user.mobile || '—'], ['Role', roleLabel(modal.user.role)], ['Status', cap(modal.user.status)],
+          <dl className="details one">{[['Name', modal.user.name], ['Email', modal.user.email], ['Mobile', modal.user.mobile || '—'], ['Role', cap(modal.user.role)], ['Status', cap(modal.user.status)],
             ['Organization', modal.user.organization || '—'], ['Created', new Date(modal.user.createdAt).toLocaleString()]].map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
         </Modal>)}
       {(modal?.type === 'add' || modal?.type === 'edit') && (

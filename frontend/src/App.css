@@ -183,134 +183,151 @@
   }
 }
 
-
-/* Recent Activities - Modern Feed */
-
-.recent-activity-card {
-  min-width: 0;
+.gis-container {
+  padding: 24px;
+  color: #263238;
 }
 
-.activity-header {
+.gis-stats {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 20px 0;
 }
 
-.activity-header h3 {
-  margin: 0;
+.gis-stat-card {
+  flex: 1;
+  min-width: 180px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #e8f5e9;
 }
 
-.activity-header p {
-  margin: 5px 0 0;
-  color: #84958a;
-  font-size: 12px;
-}
-
-.activity-more {
-  color: #42b879;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.activity-more:hover {
-  color: #70d69b;
-}
-
-.activity-feed {
+.gis-form {
   display: flex;
   flex-direction: column;
-}
-
-.activity-item {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  align-items: center;
   gap: 12px;
-  padding: 13px 4px;
-  border-bottom: 1px solid rgba(255,255,255,0.09);
+  max-width: 550px;
+  padding: 20px;
+  margin-bottom: 24px;
+  background: #f5f8fa;
+  border-radius: 12px;
 }
 
-.activity-item:last-child {
-  border-bottom: none;
+.gis-form input {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 7px;
 }
 
-.activity-icon {
-  width: 32px;
-  height: 32px;
+.gis-form button,
+.gis-plot-card button {
+  padding: 12px;
+  border: none;
+  border-radius: 7px;
+  background: #238443;
+  color: white;
+  cursor: pointer;
+}
+
+.gis-map {
+  width: 100%;
+  height: 450px;
+  margin: 15px 0 25px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.gis-message {
+  padding: 10px;
+  background: #e3f2fd;
+  border-radius: 7px;
+}
+
+.gis-plot-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 15px;
+}
+
+.gis-plot-card {
+  padding: 15px;
+  border: 1px solid #ddd;
   border-radius: 10px;
+}
+
+.gis-container {
+  padding: 24px;
+  color: #263238;
+}
+
+.gis-stats {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(66,184,121,0.12);
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 20px 0;
 }
 
-.activity-icon span {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #42b879;
+.gis-stat-card {
+  flex: 1;
+  min-width: 180px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #e8f5e9;
 }
 
-.activity-icon.deleted {
-  background: rgba(228,119,119,0.12);
+.gis-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 550px;
+  padding: 20px;
+  margin-bottom: 24px;
+  background: #f5f8fa;
+  border-radius: 12px;
 }
 
-.activity-icon.deleted span {
-  background: #e47777;
+.gis-form input {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 7px;
 }
 
-.activity-icon.deactivated {
-  background: rgba(227,163,75,0.12);
+.gis-form button,
+.gis-plot-card button {
+  padding: 12px;
+  border: none;
+  border-radius: 7px;
+  background: #238443;
+  color: white;
+  cursor: pointer;
 }
 
-.activity-icon.deactivated span {
-  background: #e3a34b;
+.gis-form button:hover,
+.gis-plot-card button:hover {
+  background: #176b34;
 }
 
-.activity-icon.updated {
-  background: rgba(101,169,216,0.12);
+.gis-map {
+  height: 450px;
+  width: 100%;
 }
 
-.activity-icon.updated span {
-  background: #65a9d8;
+.gis-message {
+  padding: 10px;
+  background: #e3f2fd;
+  border-radius: 7px;
 }
 
-.activity-content {
-  min-width: 0;
+.gis-plot-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 15px;
 }
 
-.activity-content strong {
-  display: block;
-  font-size: 12px;
-  line-height: 1.4;
-  color: #e1eee5;
-  margin-bottom: 4px;
-}
-
-.activity-content p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #aab9ae;
-  overflow-wrap: anywhere;
-}
-
-.activity-item time {
-  color: #84958a;
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-@media (max-width: 550px) {
-  .activity-item {
-    grid-template-columns: 30px minmax(0, 1fr);
-  }
-
-  .activity-item time {
-    grid-column: 2;
-  }
+.gis-plot-card {
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: white;
 }

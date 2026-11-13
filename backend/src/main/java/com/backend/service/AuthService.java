@@ -16,7 +16,7 @@ import java.util.Set;
 public class AuthService {
 
     private static final Set<String> PUBLIC_ROLES =
-        Set.of("FARMER");
+            Set.of("FARMER", "FIELD_WORKER");
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
