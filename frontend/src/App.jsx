@@ -17,10 +17,16 @@ import FarmDetails from './pages/FarmDetails';
 import Profile from './pages/Profile';
 import AccessDenied from './pages/AccessDenied';
 import ActivityHistory from './pages/ActivityHistory';
-import AcceptInvitation from './pages/auth/AcceptInvitation';
+import WeatherMonitoring from './pages/WeatherMonitoring';
+import Notifications from './pages/Notifications';
 
 function Guard({ perm, children }) {
   const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
   return can(user.role, perm) ? children : <AccessDenied />;
 }
 function PublicOnly({ children }) {
@@ -34,8 +40,10 @@ export default function App() {
       <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
       <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
       <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
-      <Route path="/reset-password" element={<PublicOnly><ResetPassword /></PublicOnly>}/>      
-      <Route path="/accept-invitation"element={<AcceptInvitation />}/>
+      <Route
+  path="/reset-password"
+  element={<PublicOnly><ResetPassword /></PublicOnly>}
+/>
       <Route element={<DashboardLayout />}>
         <Route path="/overview" element={<Guard perm="overview"><Overview /></Guard>} />
         <Route path="/users" element={<Guard perm="users"><UserManagement /></Guard>} />
@@ -74,6 +82,8 @@ export default function App() {
     </Guard>
   }
 />
+        <Route path="/weather" element={<Guard perm="weather"><WeatherMonitoring /></Guard>} />
+        <Route path="/notifications" element={<Guard perm="notifications"><Notifications /></Guard>} />
       </Route>
       <Route path="/" element={<Navigate to="/overview" replace />} />
       <Route path="*" element={<Navigate to="/overview" replace />} />

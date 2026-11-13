@@ -113,10 +113,10 @@ export async function logout() {
 export async function register(role, data) {
   const normalizedRole = role.toUpperCase();
 
-  // Public registration must never create an Admin account.
-  if (normalizedRole === 'ADMIN') {
+  // Public registration is Farmer-only; privileged roles require an invite.
+  if (normalizedRole !== 'FARMER') {
     throw new Error(
-      'Admin accounts must be created through an authorized process.'
+      'This role requires an Admin invitation or first-Admin setup.'
     );
   }
 
@@ -157,28 +157,20 @@ export async function resetPassword(token, newPassword) {
   });
 }
 
-// Validate an invitation using its secure token.
-export async function validateInvitation(token) {
-  if (!token) {
-    throw new Error('Invitation token is missing.');
-  }
 
-  return request(
-    `/api/invitations/validate?token=${encodeURIComponent(token)}`,
-    { method: 'GET' }
-  );
+
+export async function createFirstAdmin(data) {
+  return request('/api/auth/admin-setup', { method: 'POST', body: {
+    name: data.name.trim(), email: data.email.trim().toLowerCase(),
+    password: data.password, role: 'ADMIN', mobile: data.mobile || null,
+    language: data.language || 'English', adminSetupSecret: data.adminSetupSecret,
+  }});
 }
 
-// Accept an invitation and create the invited user's account.
-export async function acceptInvitation({ token, name, password }) {
-  return request('/api/invitations/accept', {
-    method: 'POST',
-    body: {
-      token,
-      name: name.trim(),
-      password,
-    },
-  });
+export async function registerInvited(data, invitationToken) {
+  return request('/api/auth/register-invited', { method: 'POST', body: {
+    name: data.name.trim(), email: data.email.trim().toLowerCase(),
+    password: data.password, role: 'INVITED', mobile: data.mobile || null,
+    language: data.language || 'English', invitationToken,
+  }});
 }
-
-

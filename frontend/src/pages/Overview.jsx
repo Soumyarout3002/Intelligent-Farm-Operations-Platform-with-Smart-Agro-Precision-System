@@ -92,10 +92,12 @@ export default function Overview() {
         <div className="hero-text"><h1>Welcome, {user.name}!</h1><p>{cap(user.role)} dashboard · {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
         <span className="tagpill">Demo build</span>
       </div>
+
       <div className="alert info">
-  Farm figures, weather and tasks may contain demo data.
-  Recent activities are fetched from the backend.
-</div>
+        Farm figures, weather and tasks may contain demo data.
+        Recent activities are fetched from the backend.
+      </div>
+
 
       <div className="cards">
         {cards.map((c) => <div className="card stat" key={c.label}><c.icon size={22} /><div><strong>{c.value}</strong><span>{c.label}</span></div></div>)}
