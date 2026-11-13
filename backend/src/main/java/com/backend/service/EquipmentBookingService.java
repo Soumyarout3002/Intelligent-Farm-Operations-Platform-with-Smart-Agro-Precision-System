@@ -26,6 +26,7 @@ public class EquipmentBookingService {
     private final EquipmentBookingRepository bookingRepository;
     private final EquipmentRepository equipmentRepository;
     private final FarmRepository farmRepository;
+    private final NotificationService notificationService;
 
     public EquipmentBooking createBooking(
             Long farmId,
@@ -127,8 +128,19 @@ public class EquipmentBookingService {
         booking.setReviewedBy(admin);
         booking.setReviewedAt(java.time.LocalDateTime.now());
 
-        return bookingRepository.save(booking);
-    }
+        EquipmentBooking saved = bookingRepository.save(booking);
+
+notificationService.createNotification(
+        saved.getFarmer().getId(),
+        farmId,
+        "Equipment booking approved",
+        "Your booking for " + saved.getEquipment().getName()
+                + " on " + saved.getBookingDate() + " was approved.",
+        "EQUIPMENT",
+        "BOOKING:" + saved.getId() + ":APPROVED"
+);
+return saved;
+}
 
     public EquipmentBooking rejectBooking(
             Long farmId,

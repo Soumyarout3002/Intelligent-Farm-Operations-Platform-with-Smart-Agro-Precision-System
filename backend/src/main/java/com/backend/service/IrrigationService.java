@@ -26,6 +26,7 @@ public class IrrigationService {
     private final IrrigationScheduleRepository scheduleRepository;
     private final IrrigationRecordRepository recordRepository;
     private final WeatherService weatherService;
+    private final NotificationService notificationService;
 
     // 1. Create schedule
 
@@ -142,32 +143,51 @@ public class IrrigationService {
 
         getFarm(farmId, ownerId);
 
-        IrrigationSchedule schedule =
-                getScheduleEntity(farmId, scheduleId);
+        Farm farm = getFarm(farmId, ownerId);
 
-        if (!schedule.getStatus().equals("SCHEDULED")) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "This irrigation schedule has already been recorded"
-            );
-        }
+IrrigationSchedule schedule =
+        getScheduleEntity(farmId, scheduleId);
 
-        String action = request.getAction().toUpperCase();
+if (!schedule.getStatus().equals("SCHEDULED")) {
+    throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "This irrigation schedule has already been recorded"
+    );
+}
 
-        IrrigationRecord record = IrrigationRecord.builder()
-                .schedule(schedule)
-                .action(action)
-                .notes(request.getNotes())
-                .recordedAt(LocalDateTime.now())
-                .build();
+String action = request.getAction().toUpperCase();
 
-        schedule.setStatus(action);
-        schedule.setUpdatedAt(LocalDateTime.now());
+IrrigationRecord record = IrrigationRecord.builder()
+        .schedule(schedule)
+        .action(action)
+        .notes(request.getNotes())
+        .recordedAt(LocalDateTime.now())
+        .build();
 
-        scheduleRepository.save(schedule);
+schedule.setStatus(action);
+schedule.setUpdatedAt(LocalDateTime.now());
 
-        return toRecordResponse(
-                recordRepository.save(record));
+scheduleRepository.save(schedule);
+
+IrrigationRecord savedRecord = recordRepository.save(record);
+
+String title = action.equals("COMPLETED")
+        ? "Irrigation completed"
+        : "Irrigation skipped";
+
+String message = "Irrigation schedule #" + schedule.getId()
+        + " was marked as " + action.toLowerCase() + ".";
+
+notificationService.createNotification(
+        farm.getOwner().getId(),
+        farmId,
+        title,
+        message,
+        "IRRIGATION",
+        "IRRIGATION:" + savedRecord.getId()
+);
+
+return toRecordResponse(savedRecord);
     }
 
     // 7. Get irrigation history
