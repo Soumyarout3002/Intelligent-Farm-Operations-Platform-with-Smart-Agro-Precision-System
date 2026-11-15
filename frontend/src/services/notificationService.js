@@ -1,74 +1,150 @@
 import { request } from './api';
 import { getToken } from './authService';
-import { DEFAULT_PREFERENCES, sampleList, sampleSetRead, sampleMarkAll, samplePreferences, sampleSavePreferences } from './sampleData/notificationSample';
 
-// Sample data is ON by default because the notification backend is not implemented yet.
-// Set VITE_NOTIFICATIONS_USE_SAMPLE_DATA=false in frontend/.env to call the real endpoints below.
-export const NOTIFICATION_SAMPLE_MODE = import.meta.env.VITE_NOTIFICATIONS_USE_SAMPLE_DATA !== 'false';
+import {
+  DEFAULT_PREFERENCES,
+  sampleList,
+  sampleSetRead,
+  sampleMarkAll,
+  samplePreferences,
+  sampleSavePreferences,
+} from './sampleData/notificationSample';
 
-const pause = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms));
+// Set VITE_NOTIFICATIONS_USE_SAMPLE_DATA=false in frontend/.env
+// to use the real Spring Boot notification APIs.
+export const NOTIFICATION_SAMPLE_MODE =
+  import.meta.env.VITE_NOTIFICATIONS_USE_SAMPLE_DATA !== 'false';
+
+const pause = (ms = 300) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 function token() {
   const t = getToken();
-  if (!t) throw new Error('Please log in to view notifications.');
+
+  if (!t) {
+    throw new Error('Please log in to view notifications.');
+  }
+
   return t;
 }
 
-// The backend identifies the user from the session token; these keys only separate sample data per user.
-export const userKeyOf = (user) => String(user?.id ?? user?.email ?? 'anonymous');
+export const userKeyOf = (user) =>
+  String(user?.id ?? user?.email ?? 'anonymous');
 
-// Accept either a plain array or a Spring Page ({ content: [...] }).
-const toArray = (data) => (Array.isArray(data) ? data : data?.content || []);
+const toArray = (data) =>
+  Array.isArray(data) ? data : data?.content || [];
 
+// Convert backend notification types into frontend categories.
+function getCategory(type) {
+  const categories = {
+    WEATHER: 'weather',
+    CROP: 'crop',
+    INVENTORY: 'inventory',
+    IRRIGATION: 'irrigation',
+    EQUIPMENT: 'equipment',
+    GENERAL: 'general',
+  };
+
+  return categories[String(type || '').toUpperCase()] || 'general';
+}
+
+// Convert backend response into the structure used by React components.
 function normalize(n) {
   return {
     id: String(n.id),
-    category: n.category ? String(n.category).toLowerCase() : 'general',
-    severity: n.severity ? String(n.severity).toLowerCase() : 'info',
+    category: getCategory(n.type ?? n.category),
+    severity: String(n.severity || 'info').toLowerCase(),
     title: n.title || 'Notification',
-    description: n.description || n.message || '',
+    description: n.message || n.description || '',
     createdAt: n.createdAt,
     read: Boolean(n.read ?? n.isRead),
     link: n.link || null,
   };
 }
 
+// GET /api/notifications
 export async function listNotifications(user) {
   if (NOTIFICATION_SAMPLE_MODE) {
     await pause();
     return sampleList(userKeyOf(user), user.role);
   }
-  const data = await request('/api/notifications?size=200', { token: token() });
+
+  const data = await request('/api/notifications?size=200', {
+    token: token(),
+  });
+
   return toArray(data).map(normalize);
 }
 
-export async function markNotificationRead(user, id) {
-  if (NOTIFICATION_SAMPLE_MODE) { sampleSetRead(userKeyOf(user), user.role, [id]); return; }
-  await request(`/api/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH', token: token() });
-}
-
-export async function markAllNotificationsRead(user) {
-  if (NOTIFICATION_SAMPLE_MODE) { sampleMarkAll(userKeyOf(user), user.role); return; }
-  await request('/api/notifications/read-all', { method: 'PATCH', token: token() });
-}
-
-export async function getNotificationPreferences(user) {
+// GET /api/notifications/unread-count
+export async function getUnreadNotificationCount() {
   if (NOTIFICATION_SAMPLE_MODE) {
-    await pause(200);
-    return samplePreferences(userKeyOf(user), user.role);
+    const notifications = await listNotifications();
+    return notifications.filter((n) => !n.read).length;
   }
-  const data = await request('/api/notifications/preferences', { token: token() });
-  return {
-    categories: { ...DEFAULT_PREFERENCES.categories, ...(data.categories || {}) },
-    channels: { ...DEFAULT_PREFERENCES.channels, ...(data.channels || {}) },
-    dailySummary: { ...DEFAULT_PREFERENCES.dailySummary, ...(data.dailySummary || {}) },
-  };
+
+  const data = await request('/api/notifications/unread-count', {
+    token: token(),
+  });
+
+  return Number(data.unreadCount ?? data.count ?? 0);
+}
+
+// PATCH /api/notifications/{id}/read
+export async function markNotificationRead(user, id) {
+  if (NOTIFICATION_SAMPLE_MODE) {
+    sampleSetRead(userKeyOf(user), user.role, [id]);
+    return;
+  }
+
+  return request(
+    `/api/notifications/${encodeURIComponent(id)}/read`,
+    {
+      method: 'PATCH',
+      token: token(),
+    }
+  );
+}
+
+// PATCH /api/notifications/read-all
+export async function markAllNotificationsRead(user) {
+  if (NOTIFICATION_SAMPLE_MODE) {
+    sampleMarkAll(userKeyOf(user), user.role);
+    return;
+  }
+
+  return request('/api/notifications/read-all', {
+    method: 'PATCH',
+    token: token(),
+  });
+}
+
+// DELETE /api/notifications/{id}
+export async function deleteNotification(id) {
+  if (NOTIFICATION_SAMPLE_MODE) {
+    return;
+  }
+
+  return request(`/api/notifications/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    token: token(),
+  });
+}
+
+// Preferences remain sample-based because the backend preferences
+// endpoints have not been implemented yet.
+export async function getNotificationPreferences(user) {
+  await pause(200);
+
+  return samplePreferences(userKeyOf(user), user.role);
 }
 
 export async function saveNotificationPreferences(user, preferences) {
-  if (NOTIFICATION_SAMPLE_MODE) {
-    await pause(300);
-    return sampleSavePreferences(userKeyOf(user), user.role, preferences);
-  }
-  return request('/api/notifications/preferences', { method: 'PUT', body: preferences, token: token() });
+  await pause(300);
+
+  return sampleSavePreferences(
+    userKeyOf(user),
+    user.role,
+    preferences
+  );
 }

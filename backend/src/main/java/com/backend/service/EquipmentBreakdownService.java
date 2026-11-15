@@ -27,6 +27,7 @@ public class EquipmentBreakdownService {
     private final EquipmentBreakdownRepository breakdownRepository;
     private final EquipmentRepository equipmentRepository;
     private final FarmRepository farmRepository;
+    private final NotificationService notificationService;
 
     public EquipmentBreakdownResponse reportBreakdown(
             Long farmId,
@@ -60,9 +61,20 @@ public class EquipmentBreakdownService {
 
         equipment.setStatus("Maintenance");
 
+        EquipmentBreakdown saved =
         breakdownRepository.save(breakdown);
 
-        return toResponse(breakdown);
+notificationService.createNotification(
+        user.getId(),
+        farmId,
+        "Equipment breakdown reported",
+        equipment.getName() + " has been reported for breakdown: "
+                + breakdown.getReason(),
+        "EQUIPMENT",
+        "BREAKDOWN:" + saved.getId() + ":REPORTED"
+);
+
+return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -124,7 +136,14 @@ public class EquipmentBreakdownService {
             breakdown.getEquipment().setStatus("Maintenance");
         }
 
-        return toResponse(breakdownRepository.save(breakdown));
+        EquipmentBreakdown saved =
+        breakdownRepository.save(breakdown);
+        notificationService.createNotification(saved.getReportedBy().getId(),farmId,
+        "Equipment maintenance update",saved.getEquipment().getName()
+                + " breakdown status is now " + saved.getStatus() + ".",
+        "EQUIPMENT",
+        "BREAKDOWN:" + saved.getId() + ":" + saved.getStatus());
+        return toResponse(saved);
     }
 
     private void verifyFarmAccess(Long farmId, User user) {

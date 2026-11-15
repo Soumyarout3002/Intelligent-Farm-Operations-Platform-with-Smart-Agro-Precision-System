@@ -4,6 +4,7 @@ import com.backend.dto.weather.CurrentWeatherResponse;
 import com.backend.dto.weather.DailyForecastResponse;
 import com.backend.dto.weather.WeatherAlertResponse;
 import com.backend.entity.User;
+import com.backend.service.NotificationService;
 import com.backend.service.WeatherService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,8 @@ import java.util.List;
 public class WeatherController {
 
     private final WeatherService weatherService;
+    private final NotificationService notificationService;
+    
 
     // Current weather
 
@@ -55,14 +58,31 @@ public class WeatherController {
 
     @GetMapping("/alerts")
     public List<WeatherAlertResponse> alerts(
-            @PathVariable Long farmId,
-            HttpServletRequest request) {
+        @PathVariable Long farmId,
+        HttpServletRequest request) {
 
-        return weatherService.getAlerts(
+    User user = authenticatedUser(request);
+
+    List<WeatherAlertResponse> alerts =
+            weatherService.getAlerts(farmId, user.getId());
+
+    for (WeatherAlertResponse alert : alerts) {
+        String date = alert.getExpectedDate() == null
+                ? "UNKNOWN"
+                : alert.getExpectedDate();
+
+        notificationService.createNotification(
+                user.getId(),
                 farmId,
-                authenticatedUser(request).getId()
+                alert.getTitle(),
+                alert.getMessage(),
+                "WEATHER",
+                "WEATHER:" + farmId + ":" + alert.getAlertType() + ":" + date
         );
     }
+
+    return alerts;
+}
 
     // Authenticated user
 

@@ -22,27 +22,47 @@ public class MaintenanceReminderService {
 
     private final EquipmentRepository equipmentRepository;
     private final FarmRepository farmRepository;
+    private final NotificationService notificationService;
 
     public List<MaintenanceReminderResponse> getMaintenanceReminders(
-            Long farmId, Long ownerId) {
+        Long farmId, Long ownerId) {
 
-        farmRepository.findByIdAndOwnerId(farmId, ownerId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Farm not found or access denied"));
+    farmRepository.findByIdAndOwnerId(farmId, ownerId)
+            .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Farm not found or access denied"));
 
-        LocalDate today = LocalDate.now();
-        LocalDate upcomingLimit = today.plusDays(30);
+    LocalDate today = LocalDate.now();
+    LocalDate upcomingLimit = today.plusDays(30);
 
-        return equipmentRepository.findByFarmId(farmId)
-                .stream()
-                .filter(equipment ->
-                        equipment.getNextMaintenanceDate() != null
-                        && !equipment.getNextMaintenanceDate()
-                                .isAfter(upcomingLimit))
-                .map(equipment -> toResponse(equipment, today))
-                .toList();
+    List<MaintenanceReminderResponse> reminders =
+            equipmentRepository.findByFarmId(farmId)
+                    .stream()
+                    .filter(equipment ->
+                            equipment.getNextMaintenanceDate() != null
+                            && !equipment.getNextMaintenanceDate()
+                                    .isAfter(upcomingLimit))
+                    .map(equipment -> toResponse(equipment, today))
+                    .toList();
+
+    for (MaintenanceReminderResponse reminder : reminders) {
+
+        notificationService.createNotification(
+                ownerId,
+                farmId,
+                "Equipment maintenance reminder",
+                reminder.getEquipment() + " maintenance status: "
+                        + reminder.getMaintenanceStatus()
+                        + ". Maintenance date: "
+                        + reminder.getNextMaintenanceDate(),
+                "EQUIPMENT",
+                "MAINTENANCE:" + reminder.getEquipmentId()
+                        + ":" + reminder.getNextMaintenanceDate()
+        );
     }
+
+    return reminders;
+}
 
     private MaintenanceReminderResponse toResponse(
             Equipment equipment, LocalDate today) {
