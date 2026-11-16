@@ -10,6 +10,7 @@ import {
   ClipboardList,
   CloudSun,
   Bell,
+  Bot,
 } from 'lucide-react';
 
 // Frontend role permissions.
@@ -24,7 +25,9 @@ export const ROLE_PERMISSIONS = {
     'equipmentBookings',
     'resources',
     'weather',
+    'aiAssistant',
     'notifications',
+    'aiAssistant'
   ],
 
   field_worker: [
@@ -49,6 +52,7 @@ export const ROLE_PERMISSIONS = {
     'equipmentBookings',
     'resources',
     'weather',
+    'aiAssistant',
     'notifications',
   ],
 };
@@ -104,6 +108,12 @@ export const NAV_ITEMS = [
     label: 'Weather Monitoring',
     path: '/weather',
     icon: CloudSun,
+  },
+  {
+  key: 'aiAssistant',
+  label: 'AI Assistant',
+  path: '/ai-assistant',
+  icon: Bot,
   },
   {
     key: 'notifications',
