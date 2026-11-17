@@ -5,6 +5,7 @@ import com.backend.dto.weather.DailyForecastResponse;
 import com.backend.dto.weather.WeatherAlertResponse;
 import com.backend.entity.Farm;
 import com.backend.repository.FarmRepository;
+import com.backend.repository.FarmWorkerAssignmentRepository;
 import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,13 +23,14 @@ public class WeatherService {
 
     private final RestClient openMeteoRestClient;
     private final FarmRepository farmRepository;
+    private final FarmWorkerAssignmentRepository assignmentRepository;
 
     // 1. Current weather
 
     public CurrentWeatherResponse getCurrentWeather(
-            Long farmId, Long ownerId) {
+            Long farmId, Long userId, String role) {
 
-        Farm farm = getFarmWithCoordinates(farmId, ownerId);
+        Farm farm = getFarmWithCoordinates(farmId, userId, role);
 
         JsonNode root = fetchWeather(farm);
         JsonNode current = root.path("current");
@@ -62,12 +64,19 @@ public class WeatherService {
                 .build();
     }
 
-    // 2. Seven-day forecast
-
+    // Backward compatibility for existing internal callers such as IrrigationService.
+    // This overload preserves the original owner-only access behavior.
     public List<DailyForecastResponse> getForecast(
             Long farmId, Long ownerId) {
 
-        Farm farm = getFarmWithCoordinates(farmId, ownerId);
+        return getForecast(farmId, ownerId, "FARMER");
+    }
+    // 2. Seven-day forecast
+
+    public List<DailyForecastResponse> getForecast(
+            Long farmId, Long userId, String role) {
+
+        Farm farm = getFarmWithCoordinates(farmId, userId, role);
 
         JsonNode daily = fetchWeather(farm).path("daily");
 
@@ -127,9 +136,9 @@ public class WeatherService {
     // 3. Weather alerts
 
     public List<WeatherAlertResponse> getAlerts(
-            Long farmId, Long ownerId) {
+            Long farmId, Long userId, String role) {
 
-        Farm farm = getFarmWithCoordinates(farmId, ownerId);
+        Farm farm = getFarmWithCoordinates(farmId, userId, role);
 
         JsonNode daily = fetchWeather(farm).path("daily");
 
@@ -310,15 +319,41 @@ public class WeatherService {
     // 6. Check farm ownership and coordinates
 
     private Farm getFarmWithCoordinates(
-            Long farmId, Long ownerId) {
+            Long farmId, Long userId, String role) {
 
-        Farm farm = farmRepository
-                .findByIdAndOwnerId(farmId, ownerId)
+        Farm farm;
 
-                .orElseThrow(() -> new ResponseStatusException(
+        if ("FIELD_WORKER".equalsIgnoreCase(role)) {
+
+            boolean assigned = assignmentRepository
+                    .findByWorker_IdAndStatusIgnoreCase(userId, "ACTIVE")
+                    .stream()
+                    .anyMatch(assignment ->
+                            assignment.getFarm() != null
+                            && assignment.getFarm().getId().equals(farmId));
+
+            if (!assigned) {
+                throw new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Farm not found"
-                ));
+                        "Farm not found or not assigned to this worker"
+                );
+            }
+
+            farm = farmRepository.findById(farmId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Farm not found"
+                    ));
+
+        } else {
+
+            farm = farmRepository
+                    .findByIdAndOwnerId(farmId, userId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Farm not found"
+                    ));
+        }
 
         if (farm.getLatitude() == null
                 || farm.getLongitude() == null) {

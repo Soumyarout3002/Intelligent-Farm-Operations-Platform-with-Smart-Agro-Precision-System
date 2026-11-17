@@ -6,8 +6,11 @@ import com.backend.dto.farm.PlotResponse;
 import com.backend.entity.Farm;
 import com.backend.entity.Plot;
 import com.backend.repository.FarmRepository;
+import com.backend.repository.FarmWorkerAssignmentRepository;
 import com.backend.repository.PlotRepository;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +25,7 @@ public class PlotService {
 
     private final FarmRepository farmRepository;
     private final PlotRepository plotRepository;
+    private final FarmWorkerAssignmentRepository assignmentRepository;
 
     public PlotResponse createPlot(
             Long farmId, PlotRequest request, Long ownerId) {
@@ -50,9 +54,9 @@ public class PlotService {
 
     @Transactional(readOnly = true)
     public List<PlotResponse> getFarmPlots(
-            Long farmId, Long ownerId) {
+            Long farmId, Long userId, String role) {
 
-        getOwnedFarm(farmId, ownerId);
+        getReadableFarm(farmId, userId, role);
 
         return plotRepository.findByFarmId(farmId)
                 .stream()
@@ -62,9 +66,9 @@ public class PlotService {
 
     @Transactional(readOnly = true)
     public PlotResponse getPlot(
-            Long farmId, Long plotId, Long ownerId) {
+            Long farmId, Long plotId, Long userId, String role) {
 
-        getOwnedFarm(farmId, ownerId);
+        getReadableFarm(farmId, userId, role);
 
         return toResponse(getPlotById(farmId, plotId));
     }
@@ -106,16 +110,50 @@ public class PlotService {
         plotRepository.delete(plot);
     }
 
+    private Farm getReadableFarm(
+            Long farmId, Long userId, String role) {
+
+        if ("FIELD_WORKER".equalsIgnoreCase(role)) {
+
+            boolean assigned = assignmentRepository
+                    .findByWorker_IdAndStatusIgnoreCase(
+                            userId, "ACTIVE")
+                    .stream()
+                    .anyMatch(assignment ->
+                            assignment.getFarm() != null
+                            && assignment.getFarm().getId().equals(farmId));
+
+            if (!assigned) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Farm not found or not assigned to this worker"
+                );
+            }
+
+            return farmRepository.findById(farmId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Farm not found"
+                    ));
+        }
+
+        return getOwnedFarm(farmId, userId);
+    }
+
     private Farm getOwnedFarm(Long farmId, Long ownerId) {
         return farmRepository.findByIdAndOwnerId(farmId, ownerId)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Farm not found"));
+                        HttpStatus.NOT_FOUND,
+                        "Farm not found"
+                ));
     }
 
     private Plot getPlotById(Long farmId, Long plotId) {
         return plotRepository.findByIdAndFarmId(plotId, farmId)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Plot not found"));
+                        HttpStatus.NOT_FOUND,
+                        "Plot not found"
+                ));
     }
 
     private PlotResponse toResponse(Plot plot) {
