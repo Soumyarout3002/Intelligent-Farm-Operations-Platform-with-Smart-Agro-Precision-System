@@ -63,3 +63,343 @@
   .wx-tiles { gap: 10px; } .wx-tile { flex-direction: column; align-items: flex-start; gap: 8px; } .wx-hero-temp { font-size: 2.8rem; }
   .wx-forecast { grid-template-columns: repeat(7, 112px); } .wx-seg button { padding: 7px 10px; }
 }
+
+/* =========================================================
+   FARMVERSE - WEATHER UI REDESIGN
+   Palette: Emerald, Leaf Green, Sage
+   ========================================================= */
+
+.wx-page {
+  color: #173b25;
+  background: #f5f8f2;
+  padding: 24px;
+  border-radius: 18px;
+}
+
+.wx-page h1,
+.wx-page h2,
+.wx-page h3 {
+  color: #14532d;
+  letter-spacing: -0.35px;
+}
+
+.wx-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.wx-farm-select {
+  border: 1px solid #a8c99a;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: #fff;
+  color: #14532d;
+  font-weight: 600;
+}
+
+.wx-banner {
+  border: 1px solid #86b94a;
+  border-left: 5px solid #16803c;
+  background: #e8f2df;
+  color: #174b2b;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin: 14px 0;
+}
+
+.wx-current {
+  border-radius: 22px;
+  overflow: hidden;
+  background: linear-gradient(120deg, #14532d 0%, #16803c 58%, #4b963c 100%);
+  color: white;
+  box-shadow: 0 12px 28px rgba(20, 83, 45, .19);
+  margin: 20px 0;
+}
+
+.wx-hero {
+  color: white;
+  padding: 28px;
+  background: linear-gradient(120deg, #14532d, #16803c 65%, #4b963c);
+}
+
+.wx-hero h1,
+.wx-hero h2,
+.wx-hero h3,
+.wx-hero-place,
+.wx-hero-temp,
+.wx-hero-sub {
+  color: #fff;
+}
+
+.wx-hero-temp {
+  font-size: clamp(48px, 7vw, 76px);
+  font-weight: 800;
+  letter-spacing: -3px;
+}
+
+.wx-hero-icon {
+  filter: drop-shadow(0 5px 8px rgba(0,0,0,.15));
+}
+
+.wx-sample-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,.45);
+  background: rgba(255,255,255,.17);
+  color: #fff;
+  border-radius: 30px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wx-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px;
+}
+
+.wx-tile {
+  background: rgba(255,255,255,.96);
+  color: #174b2b;
+  border: 1px solid #d5e8c8;
+  border-radius: 15px;
+  padding: 17px;
+  box-shadow: 0 4px 12px rgba(20,83,45,.07);
+  transition: transform .2s, box-shadow .2s;
+}
+
+.wx-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 9px 20px rgba(20,83,45,.13);
+}
+
+.wx-tile strong,
+.wx-tile b {
+  color: #14532d;
+  font-size: 22px;
+}
+
+.wx-tile-icon {
+  color: #16803c;
+  background: #e4f0dc;
+  padding: 9px;
+  border-radius: 12px;
+}
+
+.wx-forecast,
+.wx-alerts,
+.wx-tips,
+.wx-chart {
+  background: #fff;
+  border: 1px solid #d5e8c8;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 5px 16px rgba(20,83,45,.055);
+  margin: 18px 0;
+}
+
+.wx-day {
+  background: #f5f8f2;
+  border: 1px solid #d5e8c8;
+  border-radius: 14px;
+  padding: 15px 10px;
+  text-align: center;
+  transition: .2s ease;
+}
+
+.wx-day:hover {
+  background: #e5f0dc;
+  border-color: #86b94a;
+  transform: translateY(-3px);
+}
+
+.wx-day.today {
+  background: #e1efda;
+  border: 2px solid #16803c;
+  box-shadow: 0 4px 12px rgba(22,128,60,.12);
+}
+
+.wx-day-cond,
+.wx-day-temp {
+  color: #14532d;
+  font-weight: 700;
+}
+
+.wx-day-rain,
+.wx-day-mm {
+  color: #477d39;
+  font-weight: 600;
+}
+
+.wx-two,
+.wx-charts {
+  gap: 18px;
+}
+
+.wx-h-icon {
+  color: #16803c;
+}
+
+.wx-alert {
+  border: 1px solid #d5e8c8;
+  border-left: 5px solid #86b94a;
+  background: #f5f8f2;
+  border-radius: 12px;
+  padding: 15px;
+  margin: 10px 0;
+}
+
+.wx-alert.sev-advisory {
+  border-left-color: #86b94a;
+}
+
+.wx-alert.sev-warning {
+  border-left-color: #16803c;
+  background: #edf5e8;
+}
+
+.wx-alert.sev-critical {
+  border-left-color: #14532d;
+  background: #e2efdf;
+}
+
+.wx-sev {
+  color: #14532d;
+  font-weight: 800;
+}
+
+.wx-all-clear {
+  background: #e4f0dc;
+  border: 1px solid #86b94a;
+  color: #14532d;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.wx-tips {
+  background: linear-gradient(135deg, #f5f8f2, #e4f0dc);
+}
+
+.wx-tips li {
+  padding: 7px 0;
+  color: #285638;
+}
+
+.wx-hist-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.wx-hist-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.wx-hist-stats > * {
+  background: #e8f2df;
+  border: 1px solid #c7dfb8;
+  color: #14532d;
+  border-radius: 13px;
+  padding: 14px;
+}
+
+.wx-grid {
+  stroke: #dce9d6;
+}
+
+.wx-axis {
+  fill: #52735a;
+  color: #52735a;
+}
+
+.wx-line,
+.wx-line-max {
+  stroke: #16803c;
+}
+
+.wx-line-min {
+  stroke: #86b94a;
+}
+
+.wx-dot-max,
+.wx-dot-min {
+  fill: #16803c;
+}
+
+.wx-bar {
+  fill: #86b94a;
+}
+
+.wx-readout {
+  background: #e4f0dc;
+  color: #14532d;
+  border: 1px solid #c7dfb8;
+  border-radius: 10px;
+}
+
+.wx-legend {
+  color: #315d3d;
+}
+
+.wx-seg {
+  border: 1px solid #b5d0a7;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.wx-seg button,
+.wx-seg [role="button"] {
+  color: #28603a;
+}
+
+.wx-seg button[aria-pressed="true"],
+.wx-seg button.active,
+.wx-seg [aria-pressed="true"] {
+  background: #16803c;
+  color: white;
+}
+
+.wx-page button {
+  transition: background .2s, transform .2s;
+}
+
+.wx-page button:hover {
+  filter: brightness(.96);
+}
+
+@media (max-width: 900px) {
+  .wx-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .wx-two,
+  .wx-charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .wx-page {
+    padding: 12px;
+  }
+  .wx-hero {
+    padding: 20px;
+  }
+  .wx-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 12px;
+    gap: 9px;
+  }
+  .wx-hist-stats {
+    grid-template-columns: 1fr;
+  }
+}
