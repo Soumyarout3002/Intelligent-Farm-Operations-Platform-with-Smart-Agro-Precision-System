@@ -1,3 +1,4 @@
+
 package com.backend.controller;
 
 import com.backend.dto.farm.PlotRequest;
@@ -41,7 +42,8 @@ public class PlotController {
         User user = getAuthenticatedUser(request);
 
         return ResponseEntity.ok(
-                plotService.getFarmPlots(farmId, user.getId()));
+                plotService.getFarmPlots(
+                        farmId, user.getId(), user.getRole()));
     }
 
     @GetMapping("/{plotId}")
@@ -53,7 +55,8 @@ public class PlotController {
         User user = getAuthenticatedUser(request);
 
         return ResponseEntity.ok(
-                plotService.getPlot(farmId, plotId, user.getId()));
+                plotService.getPlot(
+                        farmId, plotId, user.getId(), user.getRole()));
     }
 
     @PutMapping("/{plotId}")

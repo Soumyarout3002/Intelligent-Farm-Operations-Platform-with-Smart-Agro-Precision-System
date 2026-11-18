@@ -1,19 +1,15 @@
-import { request } from './api';
+﻿import { request } from './api';
 import { getToken } from './authService';
 
 import {
-  DEFAULT_PREFERENCES,
-  sampleList,
-  sampleSetRead,
-  sampleMarkAll,
   samplePreferences,
   sampleSavePreferences,
 } from './sampleData/notificationSample';
 
-// Set VITE_NOTIFICATIONS_USE_SAMPLE_DATA=false in frontend/.env
-// to use the real Spring Boot notification APIs.
+// Live backend APIs are enabled by default.
+// Set VITE_NOTIFICATIONS_USE_SAMPLE_DATA=true to use sample notifications.
 export const NOTIFICATION_SAMPLE_MODE =
-  import.meta.env.VITE_NOTIFICATIONS_USE_SAMPLE_DATA !== 'false';
+  import.meta.env.VITE_NOTIFICATIONS_USE_SAMPLE_DATA === 'true';
 
 const pause = (ms = 300) =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -66,10 +62,11 @@ function normalize(n) {
 export async function listNotifications(user) {
   if (NOTIFICATION_SAMPLE_MODE) {
     await pause();
-    return sampleList(userKeyOf(user), user.role);
+    const { sampleList } = await import('./sampleData/notificationSample');
+    return sampleList(userKeyOf(user), user?.role);
   }
 
-  const data = await request('/api/notifications?size=200', {
+  const data = await request('/api/notifications', {
     token: token(),
   });
 
@@ -79,7 +76,8 @@ export async function listNotifications(user) {
 // GET /api/notifications/unread-count
 export async function getUnreadNotificationCount() {
   if (NOTIFICATION_SAMPLE_MODE) {
-    const notifications = await listNotifications();
+    const { sampleList } = await import('./sampleData/notificationSample');
+    const notifications = sampleList('anonymous');
     return notifications.filter((n) => !n.read).length;
   }
 
@@ -87,13 +85,14 @@ export async function getUnreadNotificationCount() {
     token: token(),
   });
 
-  return Number(data.unreadCount ?? data.count ?? 0);
+  return Number(data.unreadCount ?? 0);
 }
 
 // PATCH /api/notifications/{id}/read
 export async function markNotificationRead(user, id) {
   if (NOTIFICATION_SAMPLE_MODE) {
-    sampleSetRead(userKeyOf(user), user.role, [id]);
+    const { sampleSetRead } = await import('./sampleData/notificationSample');
+    sampleSetRead(userKeyOf(user), user?.role, [id]);
     return;
   }
 
@@ -109,7 +108,8 @@ export async function markNotificationRead(user, id) {
 // PATCH /api/notifications/read-all
 export async function markAllNotificationsRead(user) {
   if (NOTIFICATION_SAMPLE_MODE) {
-    sampleMarkAll(userKeyOf(user), user.role);
+    const { sampleMarkAll } = await import('./sampleData/notificationSample');
+    sampleMarkAll(userKeyOf(user), user?.role);
     return;
   }
 
@@ -131,20 +131,21 @@ export async function deleteNotification(id) {
   });
 }
 
-// Preferences remain sample-based because the backend preferences
-// endpoints have not been implemented yet.
+// Preferences remain sample-based because backend preference APIs
+// have not been implemented yet.
 export async function getNotificationPreferences(user) {
   await pause(200);
-
-  return samplePreferences(userKeyOf(user), user.role);
+  return samplePreferences(userKeyOf(user), user?.role);
 }
 
 export async function saveNotificationPreferences(user, preferences) {
   await pause(300);
 
+  const { sampleSavePreferences } = await import('./sampleData/notificationSample');
+
   return sampleSavePreferences(
     userKeyOf(user),
-    user.role,
+    user?.role,
     preferences
   );
 }

@@ -1,15 +1,20 @@
+
 package com.backend.controller;
 
 import com.backend.dto.farm.FarmRequest;
 import com.backend.dto.farm.FarmResponse;
 import com.backend.entity.User;
 import com.backend.service.FarmService;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -38,7 +43,7 @@ public class FarmController {
         User user = getAuthenticatedUser(request);
 
         return ResponseEntity.ok(
-                farmService.getMyFarms(user.getId()));
+                farmService.getMyFarms(user.getId(), user.getRole()));
     }
 
     @GetMapping("/{farmId}")
@@ -49,7 +54,8 @@ public class FarmController {
         User user = getAuthenticatedUser(request);
 
         return ResponseEntity.ok(
-                farmService.getFarmById(farmId, user.getId()));
+                farmService.getFarmById(
+                        farmId, user.getId(), user.getRole()));
     }
 
     @PutMapping("/{farmId}")
@@ -81,7 +87,7 @@ public class FarmController {
         Object value = request.getAttribute("authenticatedUser");
 
         if (!(value instanceof User user)) {
-            throw new org.springframework.web.server.ResponseStatusException(
+            throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
                     "Authentication is required"
             );

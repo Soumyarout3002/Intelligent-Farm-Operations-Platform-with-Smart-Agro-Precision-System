@@ -54,10 +54,36 @@ function Centre({ user }) {
   return (
     <>
       <div className="cards nt-stats">
-        <div className="card"><div className="stat"><Bell size={26} /><div><strong>{unread}</strong><span>Unread</span></div></div></div>
-        <div className="card"><div className="stat"><Inbox size={26} /><div><strong>{items.length}</strong><span>Total notifications</span></div></div></div>
-        <div className="card"><div className="stat"><AlertTriangle size={26} /><div><strong>{items.filter((n) => !n.read && n.severity !== 'info').length}</strong><span>Unread warnings</span></div></div></div>
+  <div className="card nt-stat-card nt-stat-unread">
+    <div className="stat">
+      <Bell size={26} />
+      <div>
+        <strong>{unread}</strong>
+        <span>Unread</span>
       </div>
+    </div>
+  </div>
+
+  <div className="card nt-stat-card nt-stat-total">
+    <div className="stat">
+      <Inbox size={26} />
+      <div>
+        <strong>{items.length}</strong>
+        <span>Total notifications</span>
+      </div>
+    </div>
+  </div>
+
+  <div className="card nt-stat-card nt-stat-warnings">
+    <div className="stat">
+      <AlertTriangle size={26} />
+      <div>
+        <strong>{items.filter((n) => !n.read && n.severity !== 'info').length}</strong>
+        <span>Unread warnings</span>
+      </div>
+    </div>
+  </div>
+</div>
 
       <div className="card nt-filters">
         <div className="nt-filter-row">

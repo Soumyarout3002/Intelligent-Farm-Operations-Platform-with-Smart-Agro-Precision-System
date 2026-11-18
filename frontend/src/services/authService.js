@@ -8,17 +8,15 @@ const REMEMBER_KEY = 'fvn_remember_email';
 // Read the email saved by the Remember Me option.
 export const getRememberedEmail = () => read(REMEMBER_KEY, '');
 
-// Store the authenticated user and token together in the browser session.
+// Store the authenticated user and token together.
 function saveSession(user, token, remember) {
   const storage = remember ? localStorage : sessionStorage;
 
-  // Normalize role casing because the frontend permission map uses lowercase roles.
   const normalizedUser = {
     ...user,
     role: user.role?.toLowerCase(),
   };
 
-  // The token is needed for future protected backend API requests.
   write(SESSION_KEY, { user: normalizedUser, token }, storage);
 
   if (remember) {
@@ -40,7 +38,6 @@ export async function login({ email, password, remember }) {
     },
   });
 
-  // Do not create a local session unless the backend returns a token.
   if (!response.token) {
     throw new Error('Login response did not contain an authentication token.');
   }
@@ -66,9 +63,7 @@ export function getToken() {
   return session?.token || null;
 }
 
-/**
- * Keep the saved browser session synchronized with the latest backend profile.
- */
+// Synchronize the saved browser session with the latest profile.
 export function updateSessionUser(profile) {
   for (const storage of [sessionStorage, localStorage]) {
     const session = read(SESSION_KEY, null, storage);
@@ -90,8 +85,7 @@ export function updateSessionUser(profile) {
   }
 }
 
-
-// End the backend session, then clear the local session even if the request fails.
+// End the backend session and clear local session data.
 export async function logout() {
   const token = getToken();
 
@@ -103,20 +97,18 @@ export async function logout() {
       });
     }
   } finally {
-    // Remove both copies so a remembered session cannot remain active locally.
     remove(SESSION_KEY, sessionStorage);
     remove(SESSION_KEY, localStorage);
   }
 }
 
-// Register a new account through the backend.
+// Public registration is restricted to Farmer accounts.
 export async function register(role, data) {
   const normalizedRole = role.toUpperCase();
 
-  // Public registration is Farmer-only; privileged roles require an invite.
   if (normalizedRole !== 'FARMER') {
     throw new Error(
-      'This role requires an Admin invitation or first-Admin setup.'
+      'Only Farmer accounts can register publicly. Admin and Field Worker accounts require an invitation.'
     );
   }
 
@@ -133,8 +125,7 @@ export async function register(role, data) {
   });
 }
 
-// Password reset is not implemented by the backend yet.
-
+// Request a password reset email.
 export async function requestPasswordReset(email) {
   if (!email?.trim()) {
     throw new Error('Email is required.');
@@ -146,31 +137,46 @@ export async function requestPasswordReset(email) {
 
   return request(endpoint, {
     method: 'POST',
-    body: { email: email.trim().toLowerCase() },
+    body: {
+      email: email.trim().toLowerCase(),
+    },
   });
 }
 
+// Reset the password using the reset token.
 export async function resetPassword(token, newPassword) {
   return request('/api/auth/reset-password', {
     method: 'POST',
-    body: { token, newPassword },
+    body: {
+      token,
+      newPassword,
+    },
   });
 }
 
+// Validate an invitation token received through the invitation email.
+export async function validateInvitation(token) {
+  if (!token) {
+    throw new Error('Invitation token is missing.');
+  }
 
-
-export async function createFirstAdmin(data) {
-  return request('/api/auth/admin-setup', { method: 'POST', body: {
-    name: data.name.trim(), email: data.email.trim().toLowerCase(),
-    password: data.password, role: 'ADMIN', mobile: data.mobile || null,
-    language: data.language || 'English', adminSetupSecret: data.adminSetupSecret,
-  }});
+  return request(
+    `/api/invitations/validate?token=${encodeURIComponent(token)}`
+  );
 }
 
-export async function registerInvited(data, invitationToken) {
-  return request('/api/auth/register-invited', { method: 'POST', body: {
-    name: data.name.trim(), email: data.email.trim().toLowerCase(),
-    password: data.password, role: 'INVITED', mobile: data.mobile || null,
-    language: data.language || 'English', invitationToken,
-  }});
+// Accept an invitation and create the account with its assigned role.
+export async function acceptInvitation(data) {
+  if (!data?.token) {
+    throw new Error('Invitation token is missing.');
+  }
+
+  return request('/api/invitations/accept', {
+    method: 'POST',
+    body: {
+      token: data.token,
+      name: data.name?.trim(),
+      password: data.password,
+    },
+  });
 }
