@@ -1,25 +1,25 @@
 package com.backend.controller;
 
+import com.backend.dto.analytics.CostProfitAnalyticsResponse;
 import com.backend.dto.analytics.DashboardAnalyticsResponse;
+import com.backend.dto.analytics.MachineryAnalyticsResponse;
+import com.backend.dto.analytics.WaterUsageAnalyticsResponse;
+import com.backend.dto.analytics.YieldAnalyticsResponse;
 import com.backend.entity.User;
+import com.backend.service.AnalyticsReportService;
 import com.backend.service.AnalyticsService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import com.backend.dto.analytics.YieldAnalyticsResponse;
-import java.util.List;
-import com.backend.dto.analytics.CostProfitAnalyticsResponse;
-import com.backend.dto.analytics.MachineryAnalyticsResponse;
-import com.backend.dto.analytics.WaterUsageAnalyticsResponse;
-import com.backend.service.AnalyticsReportService;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/analytics")
@@ -37,10 +37,10 @@ public class AnalyticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             HttpServletRequest httpRequest) {
 
-        getAuthenticatedUser(httpRequest);
+        User user = getAuthenticatedUser(httpRequest);
 
         return ResponseEntity.ok(
-                analyticsService.getDashboardAnalytics(farmId, cropName, startDate, endDate)
+                analyticsService.getDashboardAnalytics(user.getId(), farmId, cropName, startDate, endDate)
         );
     }
 
@@ -53,10 +53,10 @@ public class AnalyticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             HttpServletRequest httpRequest) {
 
-        getAuthenticatedUser(httpRequest);
+        User user = getAuthenticatedUser(httpRequest);
 
         return ResponseEntity.ok(
-                analyticsService.getYieldAnalytics(farmId, cropName, season, startDate, endDate)
+                analyticsService.getYieldAnalytics(user.getId(), farmId, cropName, season, startDate, endDate)
         );
     }
 
@@ -69,10 +69,10 @@ public class AnalyticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             HttpServletRequest httpRequest) {
 
-        getAuthenticatedUser(httpRequest);
+        User user = getAuthenticatedUser(httpRequest);
 
         return ResponseEntity.ok(
-                analyticsService.getCostProfitAnalytics(farmId, cropName, season, startDate, endDate)
+                analyticsService.getCostProfitAnalytics(user.getId(), farmId, cropName, season, startDate, endDate)
         );
     }
 
@@ -83,10 +83,10 @@ public class AnalyticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             HttpServletRequest httpRequest) {
 
-        getAuthenticatedUser(httpRequest);
+        User user = getAuthenticatedUser(httpRequest);
 
         return ResponseEntity.ok(
-                analyticsService.getWaterUsageAnalytics(farmId, startDate, endDate)
+                analyticsService.getWaterUsageAnalytics(user.getId(), farmId, startDate, endDate)
         );
     }
 
@@ -98,10 +98,10 @@ public class AnalyticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             HttpServletRequest httpRequest) {
 
-        getAuthenticatedUser(httpRequest);
+        User user = getAuthenticatedUser(httpRequest);
 
         return ResponseEntity.ok(
-                analyticsService.getMachineryAnalytics(farmId, cropName, startDate, endDate)
+                analyticsService.getMachineryAnalytics(user.getId(), farmId, cropName, startDate, endDate)
         );
     }
 
@@ -114,10 +114,10 @@ public class AnalyticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             HttpServletRequest httpRequest) {
 
-        getAuthenticatedUser(httpRequest);
+        User user = getAuthenticatedUser(httpRequest);
 
         byte[] excelBytes = analyticsReportService.generateExcelReport(
-                farmId, cropName, season, startDate, endDate
+                user.getId(), farmId, cropName, season, startDate, endDate
         );
 
         return ResponseEntity.ok()
@@ -136,10 +136,10 @@ public class AnalyticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             HttpServletRequest httpRequest) {
 
-        getAuthenticatedUser(httpRequest);
+        User user = getAuthenticatedUser(httpRequest);
 
         byte[] pdfBytes = analyticsReportService.generatePdfReport(
-                farmId, cropName, season, startDate, endDate
+                user.getId(), farmId, cropName, season, startDate, endDate
         );
 
         return ResponseEntity.ok()

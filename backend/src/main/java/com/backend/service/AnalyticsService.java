@@ -1,6 +1,10 @@
 package com.backend.service;
 
+import com.backend.dto.analytics.CostProfitAnalyticsResponse;
 import com.backend.dto.analytics.DashboardAnalyticsResponse;
+import com.backend.dto.analytics.MachineryAnalyticsResponse;
+import com.backend.dto.analytics.WaterUsageAnalyticsResponse;
+import com.backend.dto.analytics.YieldAnalyticsResponse;
 import com.backend.entity.*;
 import com.backend.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -12,18 +16,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.List;
-import com.backend.dto.analytics.YieldAnalyticsResponse;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import com.backend.dto.analytics.CostProfitAnalyticsResponse;
-import java.util.HashSet;
-import java.util.Set;
-import com.backend.dto.analytics.MachineryAnalyticsResponse;
-import com.backend.dto.analytics.WaterUsageAnalyticsResponse;
-import java.util.TreeMap;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,21 +36,20 @@ public class AnalyticsService {
 
     @Transactional(readOnly = true)
     public DashboardAnalyticsResponse getDashboardAnalytics(
+            Long ownerId,
             Long farmId,
             String cropName,
             LocalDate startDate,
             LocalDate endDate) {
 
-        validateFilters(farmId, startDate, endDate);
+        validateDateRange(startDate, endDate);
+        List<Farm> ownedFarms = resolveOwnedFarms(farmId, ownerId);
+        Set<Long> allowedFarmIds = extractFarmIds(ownedFarms);
         String normalizedCrop = normalizeFilter(cropName);
 
-        // 1. Farms & Plots
-        List<Farm> farms = farmRepository.findAll().stream()
-                .filter(f -> farmId == null || f.getId().equals(farmId))
-                .toList();
-
+        // 1. Plots
         List<Plot> plots = plotRepository.findAll().stream()
-                .filter(p -> farmId == null || p.getFarm().getId().equals(farmId))
+                .filter(p -> allowedFarmIds.contains(p.getFarm().getId()))
                 .toList();
 
         BigDecimal totalCultivatedArea = plots.stream()
@@ -65,7 +58,7 @@ public class AnalyticsService {
 
         // 2. Crop Cycles
         List<CropCycle> cropCycles = cropCycleRepository.findAll().stream()
-                .filter(c -> farmId == null || c.getPlot().getFarm().getId().equals(farmId))
+                .filter(c -> allowedFarmIds.contains(c.getPlot().getFarm().getId()))
                 .filter(c -> matchesCrop(c.getCropName(), normalizedCrop))
                 .filter(c -> isWithinDateRange(c.getSowingDate(), startDate, endDate))
                 .toList();
@@ -77,7 +70,7 @@ public class AnalyticsService {
 
         // 3. Harvest & Yield per Acre
         BigDecimal totalHarvestQuantity = harvestRecordRepository.findAll().stream()
-                .filter(h -> farmId == null || h.getCropCycle().getPlot().getFarm().getId().equals(farmId))
+                .filter(h -> allowedFarmIds.contains(h.getCropCycle().getPlot().getFarm().getId()))
                 .filter(h -> matchesCrop(h.getCropCycle().getCropName(), normalizedCrop))
                 .filter(h -> isWithinDateRange(h.getHarvestDate(), startDate, endDate))
                 .map(h -> safeDecimal(h.getQuantity()))
@@ -85,11 +78,11 @@ public class AnalyticsService {
 
         BigDecimal averageYieldPerAcre = totalCultivatedArea.compareTo(BigDecimal.ZERO) > 0
                 ? totalHarvestQuantity.divide(totalCultivatedArea, 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
+                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
 
         // 4. Planned Budget
         BigDecimal totalPlannedBudget = seasonBudgetRepository.findAll().stream()
-                .filter(b -> farmId == null || b.getCropCycle().getPlot().getFarm().getId().equals(farmId))
+                .filter(b -> allowedFarmIds.contains(b.getCropCycle().getPlot().getFarm().getId()))
                 .filter(b -> matchesCrop(b.getCropCycle().getCropName(), normalizedCrop))
                 .filter(b -> isWithinDateRange(b.getCropCycle().getSowingDate(), startDate, endDate))
                 .map(b -> safeDecimal(b.getTotalBudget()))
@@ -97,7 +90,7 @@ public class AnalyticsService {
 
         // 5. Equipment Usage & Cost
         List<EquipmentUsage> equipmentUsages = equipmentUsageRepository.findAll().stream()
-                .filter(e -> farmId == null || e.getEquipment().getFarm().getId().equals(farmId))
+                .filter(e -> allowedFarmIds.contains(e.getEquipment().getFarm().getId()))
                 .filter(e -> normalizedCrop == null || (e.getCropCycle() != null
                         && matchesCrop(e.getCropCycle().getCropName(), normalizedCrop)))
                 .filter(e -> isWithinDateRange(e.getUsageDate(), startDate, endDate))
@@ -114,18 +107,21 @@ public class AnalyticsService {
         // 6. Labour Cost
         BigDecimal totalLabourCost = labourAttendanceRepository.findAll().stream()
                 .filter(l -> !"ABSENT".equalsIgnoreCase(l.getStatus()))
-                .filter(l -> farmId == null || (l.getCropCycle() != null
-                        && l.getCropCycle().getPlot().getFarm().getId().equals(farmId)))
-                .filter(l -> normalizedCrop == null || (l.getCropCycle() != null
-                        && matchesCrop(l.getCropCycle().getCropName(), normalizedCrop)))
+                .filter(l -> l.getCropCycle() != null
+                        && allowedFarmIds.contains(l.getCropCycle().getPlot().getFarm().getId()))
+                .filter(l -> normalizedCrop == null
+                        || matchesCrop(l.getCropCycle().getCropName(), normalizedCrop))
                 .filter(l -> isWithinDateRange(l.getAttendanceDate(), startDate, endDate))
                 .map(l -> safeDecimal(l.getDailyWage()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 7. Inventory Consumption Cost (Only Stock OUT)
+        // 7. Inventory Consumption Cost (Only Stock OUT from owned farms)
         BigDecimal totalInventoryCost = stockMovementRepository.findAll().stream()
                 .filter(s -> s.getType() == StockMovement.MovementType.OUT)
-                .filter(s -> farmId == null || s.getFarm().getId().equals(farmId))
+                .filter(s -> allowedFarmIds.contains(s.getFarm().getId()))
+                .filter(s -> normalizedCrop == null || (s.getCropActivity() != null
+                        && s.getCropActivity().getCropCycle() != null
+                        && matchesCrop(s.getCropActivity().getCropCycle().getCropName(), normalizedCrop)))
                 .filter(s -> isWithinDateRange(s.getCreatedAt().toLocalDate(), startDate, endDate))
                 .map(s -> safeDecimal(s.getTotalCost()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -134,9 +130,9 @@ public class AnalyticsService {
                 .add(totalLabourCost)
                 .add(totalInventoryCost);
 
-        // 8. Water Usage (Farm & Date based)
+        // 8. Water Usage (Owned farms & Date based)
         BigDecimal totalWaterUsedLiters = irrigationScheduleRepository.findAll().stream()
-                .filter(i -> farmId == null || i.getFarm().getId().equals(farmId))
+                .filter(i -> allowedFarmIds.contains(i.getFarm().getId()))
                 .filter(i -> isWithinDateRange(i.getScheduledAt().toLocalDate(), startDate, endDate))
                 .map(i -> i.getWaterAmountLiters() == null
                         ? BigDecimal.ZERO
@@ -145,7 +141,7 @@ public class AnalyticsService {
                 .setScale(2, RoundingMode.HALF_UP);
 
         return DashboardAnalyticsResponse.builder()
-                .totalFarms(farms.size())
+                .totalFarms(ownedFarms.size())
                 .totalPlots(plots.size())
                 .totalCultivatedArea(totalCultivatedArea.setScale(2, RoundingMode.HALF_UP))
                 .activeCropCycles(activeCropCycles)
@@ -166,32 +162,33 @@ public class AnalyticsService {
 
     @Transactional(readOnly = true)
     public List<YieldAnalyticsResponse> getYieldAnalytics(
+            Long ownerId,
             Long farmId,
             String cropName,
             String season,
             LocalDate startDate,
             LocalDate endDate) {
 
-        validateFilters(farmId, startDate, endDate);
+        validateDateRange(startDate, endDate);
+        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId));
         String normalizedCrop = normalizeFilter(cropName);
         String normalizedSeason = normalizeFilter(season);
 
         List<CropCycle> filteredCycles = cropCycleRepository.findAll().stream()
-                .filter(c -> farmId == null || c.getPlot().getFarm().getId().equals(farmId))
+                .filter(c -> allowedFarmIds.contains(c.getPlot().getFarm().getId()))
                 .filter(c -> matchesCrop(c.getCropName(), normalizedCrop))
                 .filter(c -> normalizedSeason == null || (c.getSeason() != null
                         && c.getSeason().trim().toLowerCase().contains(normalizedSeason)))
                 .toList();
 
         List<HarvestRecord> filteredHarvests = harvestRecordRepository.findAll().stream()
-                .filter(h -> farmId == null || h.getCropCycle().getPlot().getFarm().getId().equals(farmId))
+                .filter(h -> allowedFarmIds.contains(h.getCropCycle().getPlot().getFarm().getId()))
                 .filter(h -> matchesCrop(h.getCropCycle().getCropName(), normalizedCrop))
                 .filter(h -> normalizedSeason == null || (h.getCropCycle().getSeason() != null
                         && h.getCropCycle().getSeason().trim().toLowerCase().contains(normalizedSeason)))
                 .filter(h -> isWithinDateRange(h.getHarvestDate(), startDate, endDate))
                 .toList();
 
-        // Group crop cycles by (cropName + season)
         Map<String, List<CropCycle>> cyclesByGroup = new LinkedHashMap<>();
         for (CropCycle cycle : filteredCycles) {
             String cName = cycle.getCropName() != null ? cycle.getCropName().trim() : "Unknown";
@@ -202,7 +199,6 @@ public class AnalyticsService {
             cyclesByGroup.computeIfAbsent(key, k -> new ArrayList<>()).add(cycle);
         }
 
-        // Group harvests by cropCycleId for fast lookup
         Map<Long, List<HarvestRecord>> harvestsByCycleId = new LinkedHashMap<>();
         for (HarvestRecord harvest : filteredHarvests) {
             harvestsByCycleId
@@ -262,24 +258,25 @@ public class AnalyticsService {
 
     @Transactional(readOnly = true)
     public List<CostProfitAnalyticsResponse> getCostProfitAnalytics(
+            Long ownerId,
             Long farmId,
             String cropName,
             String season,
             LocalDate startDate,
             LocalDate endDate) {
 
-        validateFilters(farmId, startDate, endDate);
+        validateDateRange(startDate, endDate);
+        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId));
         String normalizedCrop = normalizeFilter(cropName);
         String normalizedSeason = normalizeFilter(season);
 
         List<CropCycle> filteredCycles = cropCycleRepository.findAll().stream()
-                .filter(c -> farmId == null || c.getPlot().getFarm().getId().equals(farmId))
+                .filter(c -> allowedFarmIds.contains(c.getPlot().getFarm().getId()))
                 .filter(c -> matchesCrop(c.getCropName(), normalizedCrop))
                 .filter(c -> normalizedSeason == null || (c.getSeason() != null
                         && c.getSeason().trim().toLowerCase().contains(normalizedSeason)))
                 .toList();
 
-        // Group crop cycles by (cropName + season)
         Map<String, List<CropCycle>> cyclesByGroup = new LinkedHashMap<>();
         for (CropCycle cycle : filteredCycles) {
             String cName = cycle.getCropName() != null ? cycle.getCropName().trim() : "Unknown";
@@ -290,33 +287,38 @@ public class AnalyticsService {
             cyclesByGroup.computeIfAbsent(key, k -> new ArrayList<>()).add(cycle);
         }
 
-        // Pre-fetch related records once to avoid repeated DB queries
-        List<SeasonBudget> allBudgets = seasonBudgetRepository.findAll();
+        List<SeasonBudget> allBudgets = seasonBudgetRepository.findAll().stream()
+                .filter(b -> allowedFarmIds.contains(b.getCropCycle().getPlot().getFarm().getId()))
+                .toList();
+
         List<EquipmentUsage> allEquipmentUsages = equipmentUsageRepository.findAll().stream()
+                .filter(e -> allowedFarmIds.contains(e.getEquipment().getFarm().getId()))
                 .filter(e -> e.getCropCycle() != null)
                 .filter(e -> isWithinDateRange(e.getUsageDate(), startDate, endDate))
                 .toList();
 
         List<LabourAttendance> allLabour = labourAttendanceRepository.findAll().stream()
-                .filter(l -> l.getCropCycle() != null)
+                .filter(l -> l.getCropCycle() != null
+                        && allowedFarmIds.contains(l.getCropCycle().getPlot().getFarm().getId()))
                 .filter(l -> !"ABSENT".equalsIgnoreCase(l.getStatus()))
                 .filter(l -> isWithinDateRange(l.getAttendanceDate(), startDate, endDate))
                 .toList();
 
         List<StockMovement> allStockOuts = stockMovementRepository.findAll().stream()
                 .filter(s -> s.getType() == StockMovement.MovementType.OUT)
+                .filter(s -> allowedFarmIds.contains(s.getFarm().getId()))
                 .filter(s -> s.getCropActivity() != null && s.getCropActivity().getCropCycle() != null)
                 .filter(s -> isWithinDateRange(s.getCreatedAt().toLocalDate(), startDate, endDate))
                 .toList();
 
-        // Track activity IDs already costed via StockMovement to avoid double counting
         Set<Long> stockCostedActivityIds = new HashSet<>();
         for (StockMovement s : allStockOuts) {
             stockCostedActivityIds.add(s.getCropActivity().getId());
         }
 
         List<CropActivity> allActivities = cropActivityRepository.findAll().stream()
-                .filter(a -> a.getCropCycle() != null)
+                .filter(a -> a.getCropCycle() != null
+                        && allowedFarmIds.contains(a.getCropCycle().getPlot().getFarm().getId()))
                 .filter(a -> !stockCostedActivityIds.contains(a.getId()))
                 .filter(a -> isWithinDateRange(a.getActivityDate(), startDate, endDate))
                 .toList();
@@ -399,14 +401,16 @@ public class AnalyticsService {
 
     @Transactional(readOnly = true)
     public WaterUsageAnalyticsResponse getWaterUsageAnalytics(
+            Long ownerId,
             Long farmId,
             LocalDate startDate,
             LocalDate endDate) {
 
-        validateFilters(farmId, startDate, endDate);
+        validateDateRange(startDate, endDate);
+        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId));
 
         List<IrrigationSchedule> schedules = irrigationScheduleRepository.findAll().stream()
-                .filter(i -> farmId == null || i.getFarm().getId().equals(farmId))
+                .filter(i -> allowedFarmIds.contains(i.getFarm().getId()))
                 .filter(i -> isWithinDateRange(i.getScheduledAt().toLocalDate(), startDate, endDate))
                 .toList();
 
@@ -487,16 +491,18 @@ public class AnalyticsService {
 
     @Transactional(readOnly = true)
     public MachineryAnalyticsResponse getMachineryAnalytics(
+            Long ownerId,
             Long farmId,
             String cropName,
             LocalDate startDate,
             LocalDate endDate) {
 
-        validateFilters(farmId, startDate, endDate);
+        validateDateRange(startDate, endDate);
+        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId));
         String normalizedCrop = normalizeFilter(cropName);
 
         List<EquipmentUsage> usages = equipmentUsageRepository.findAll().stream()
-                .filter(e -> farmId == null || e.getEquipment().getFarm().getId().equals(farmId))
+                .filter(e -> allowedFarmIds.contains(e.getEquipment().getFarm().getId()))
                 .filter(e -> normalizedCrop == null || (e.getCropCycle() != null
                         && matchesCrop(e.getCropCycle().getCropName(), normalizedCrop)))
                 .filter(e -> isWithinDateRange(e.getUsageDate(), startDate, endDate))
@@ -580,19 +586,41 @@ public class AnalyticsService {
                 .build();
     }
 
-    private void validateFilters(Long farmId, LocalDate startDate, LocalDate endDate) {
+    // ==================== OWNERSHIP & VALIDATION HELPERS ====================
+
+    private void validateDateRange(LocalDate startDate, LocalDate endDate) {
         if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "startDate cannot be after endDate"
             );
         }
-        if (farmId != null && !farmRepository.existsById(farmId)) {
+    }
+
+    private List<Farm> resolveOwnedFarms(Long farmId, Long ownerId) {
+        if (farmId != null) {
+            Optional<Farm> ownedFarm = farmRepository.findByIdAndOwnerId(farmId, ownerId);
+            if (ownedFarm.isPresent()) {
+                return List.of(ownedFarm.get());
+            }
+            if (farmRepository.existsById(farmId)) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "You do not have access to this farm"
+                );
+            }
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "Farm not found with id: " + farmId
             );
         }
+        return farmRepository.findByOwnerId(ownerId);
+    }
+
+    private Set<Long> extractFarmIds(List<Farm> farms) {
+        return farms.stream()
+                .map(Farm::getId)
+                .collect(Collectors.toSet());
     }
 
     private String normalizeFilter(String value) {

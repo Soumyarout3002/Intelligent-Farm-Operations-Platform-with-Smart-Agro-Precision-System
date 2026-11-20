@@ -41,6 +41,7 @@ public class AnalyticsReportService {
     private final AnalyticsService analyticsService;
 
     public byte[] generateExcelReport(
+            Long ownerId,
             Long farmId,
             String cropName,
             String season,
@@ -48,15 +49,15 @@ public class AnalyticsReportService {
             LocalDate endDate) {
 
         DashboardAnalyticsResponse dashboard =
-                analyticsService.getDashboardAnalytics(farmId, cropName, startDate, endDate);
+                analyticsService.getDashboardAnalytics(ownerId, farmId, cropName, startDate, endDate);
         List<YieldAnalyticsResponse> yieldList =
-                analyticsService.getYieldAnalytics(farmId, cropName, season, startDate, endDate);
+                analyticsService.getYieldAnalytics(ownerId, farmId, cropName, season, startDate, endDate);
         List<CostProfitAnalyticsResponse> costList =
-                analyticsService.getCostProfitAnalytics(farmId, cropName, season, startDate, endDate);
+                analyticsService.getCostProfitAnalytics(ownerId, farmId, cropName, season, startDate, endDate);
         WaterUsageAnalyticsResponse water =
-                analyticsService.getWaterUsageAnalytics(farmId, startDate, endDate);
+                analyticsService.getWaterUsageAnalytics(ownerId, farmId, startDate, endDate);
         MachineryAnalyticsResponse machinery =
-                analyticsService.getMachineryAnalytics(farmId, cropName, startDate, endDate);
+                analyticsService.getMachineryAnalytics(ownerId, farmId, cropName, startDate, endDate);
 
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -82,6 +83,7 @@ public class AnalyticsReportService {
     }
 
     public byte[] generatePdfReport(
+            Long ownerId,
             Long farmId,
             String cropName,
             String season,
@@ -89,15 +91,15 @@ public class AnalyticsReportService {
             LocalDate endDate) {
 
         DashboardAnalyticsResponse dashboard =
-                analyticsService.getDashboardAnalytics(farmId, cropName, startDate, endDate);
+                analyticsService.getDashboardAnalytics(ownerId, farmId, cropName, startDate, endDate);
         List<YieldAnalyticsResponse> yieldList =
-                analyticsService.getYieldAnalytics(farmId, cropName, season, startDate, endDate);
+                analyticsService.getYieldAnalytics(ownerId, farmId, cropName, season, startDate, endDate);
         List<CostProfitAnalyticsResponse> costList =
-                analyticsService.getCostProfitAnalytics(farmId, cropName, season, startDate, endDate);
+                analyticsService.getCostProfitAnalytics(ownerId, farmId, cropName, season, startDate, endDate);
         WaterUsageAnalyticsResponse water =
-                analyticsService.getWaterUsageAnalytics(farmId, startDate, endDate);
+                analyticsService.getWaterUsageAnalytics(ownerId, farmId, startDate, endDate);
         MachineryAnalyticsResponse machinery =
-                analyticsService.getMachineryAnalytics(farmId, cropName, startDate, endDate);
+                analyticsService.getMachineryAnalytics(ownerId, farmId, cropName, startDate, endDate);
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Document document = new Document(PageSize.A4.rotate(), 30, 30, 30, 30);
