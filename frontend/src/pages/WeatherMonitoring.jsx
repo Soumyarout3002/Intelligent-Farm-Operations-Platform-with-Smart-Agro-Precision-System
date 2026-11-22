@@ -69,7 +69,7 @@ function CurrentWeather({ state, farm, onRetry }) {
   ];
   return (
     <div className="wx-current">
-      <div className="card wx-hero">
+      <div className="card wx-hero" data-cond={c.condition}>
         <div className="wx-hero-icon"><WeatherIcon condition={c.condition} size={72} /></div>
         <div className="wx-hero-main">
           <span className="wx-hero-place"><MapPin size={14} /> {farm.name}{farm.location ? ` · ${farm.location}` : ''}</span>

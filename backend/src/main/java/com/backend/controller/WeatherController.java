@@ -33,10 +33,7 @@ public class WeatherController {
     User user = authenticatedUser(request);
 
     CurrentWeatherResponse response =
-            weatherService.getCurrentWeather(
-                    farmId,
-                    user.getId()
-            );
+            weatherService.getCurrentWeather(farmId, user.getId(), user.getRole());
 
     return response;
     }
@@ -48,9 +45,12 @@ public class WeatherController {
             @PathVariable Long farmId,
             HttpServletRequest request) {
 
+        User user = authenticatedUser(request);
+
         return weatherService.getForecast(
                 farmId,
-                authenticatedUser(request).getId()
+                user.getId(),
+                user.getRole()
         );
     }
 
@@ -64,7 +64,7 @@ public class WeatherController {
     User user = authenticatedUser(request);
 
     List<WeatherAlertResponse> alerts =
-            weatherService.getAlerts(farmId, user.getId());
+            weatherService.getAlerts(farmId, user.getId(), user.getRole());
 
     for (WeatherAlertResponse alert : alerts) {
         String date = alert.getExpectedDate() == null

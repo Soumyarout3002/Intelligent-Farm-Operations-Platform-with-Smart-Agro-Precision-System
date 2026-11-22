@@ -1,6 +1,14 @@
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Search, Eye, Pencil, Trash2 } from 'lucide-react';
-import { listUsers, createUser, updateUser, setStatus, deleteUser, createInvitation } from '../services/userService';
+import {
+  listUsers,
+  createUser,
+  updateUser,
+  setStatus,
+  deleteUser,
+  createInvitation,
+} from '../services/userService';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import Modal from '../components/Modal';
@@ -13,33 +21,79 @@ const STATUS = ['active', 'inactive'];
 
 function UserForm({ initial, isSelf, onSubmit, onCancel }) {
   const editing = !!initial;
+
   const fields = [
     { name: 'name', label: 'Full name', required: true },
     { name: 'email', label: 'Email', type: 'email', required: true },
     { name: 'mobile', label: 'Mobile number', type: 'tel' },
     ...(editing
-  ? [{ name: 'role', label: 'Role', type: 'select', options: ROLES, disabled: true }]
-  : [{ name: 'role', label: 'Role', type: 'select', options: ['farmer'], required: true }]),
-    ...(editing ? [] : [{ name: 'status', label: 'Status', type: 'select', options: STATUS, required: true }, { name: 'password', label: 'Temporary password', type: 'password', required: true }]),
+      ? [{ name: 'role', label: 'Role', type: 'select', options: ROLES, disabled: true }]
+      : [{ name: 'role', label: 'Role', type: 'select', options: ['farmer'], required: true }]),
+    ...(editing
+      ? []
+      : [
+          { name: 'status', label: 'Status', type: 'select', options: STATUS, required: true },
+          { name: 'password', label: 'Temporary password', type: 'password', required: true },
+        ]),
   ];
+
   const [values, setValues] = useState(initial || { role: 'farmer', status: 'active' });
   const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
   async function submit(e) {
     e.preventDefault();
+
     const errs = validateFields(fields, values);
     setErrors(errs);
+
     if (Object.keys(errs).length) return;
-    setBusy(true); setError('');
-    try { await onSubmit(values); } catch (err) { setError(err.message); setBusy(false); }
+
+    setBusy(true);
+    setError('');
+
+    try {
+      await onSubmit(values);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
   }
+
   return (
     <form onSubmit={submit} noValidate>
       {error && <div className="alert error">{error}</div>}
-      {isSelf && <div className="alert info">This is your own account: role and status cannot be changed here.</div>}
-      <div className="grid-form">{fields.map((f) => <Field key={f.name} field={f} value={values[f.name]} error={errors[f.name]} onChange={(n, v) => { setValues((p) => ({ ...p, [n]: v })); setErrors((p) => ({ ...p, [n]: undefined })); }} />)}</div>
-      <div className="form-actions"><button type="button" className="btn ghost" onClick={onCancel}>Cancel</button><button className="btn primary" disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Add user'}</button></div>
+
+      {isSelf && (
+        <div className="alert info">
+          This is your own account: role and status cannot be changed here.
+        </div>
+      )}
+
+      <div className="grid-form">
+        {fields.map((f) => (
+          <Field
+            key={f.name}
+            field={f}
+            value={values[f.name]}
+            error={errors[f.name]}
+            onChange={(n, v) => {
+              setValues((p) => ({ ...p, [n]: v }));
+              setErrors((p) => ({ ...p, [n]: undefined }));
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="form-actions">
+        <button type="button" className="btn ghost" onClick={onCancel}>
+          Cancel
+        </button>
+        <button className="btn primary" disabled={busy}>
+          {busy ? 'Saving...' : editing ? 'Save changes' : 'Add user'}
+        </button>
+      </div>
     </form>
   );
 }
@@ -47,102 +101,335 @@ function UserForm({ initial, isSelf, onSubmit, onCancel }) {
 export default function UserManagement() {
   const { user: me, refresh } = useAuth();
   const toast = useToast();
+
   const [users, setUsers] = useState([]);
   const [q, setQ] = useState('');
   const [role, setRole] = useState('');
+
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('field_worker');
-  const [inviteLink, setInviteLink] = useState('');
+  const [inviteMessage, setInviteMessage] = useState('');
   const [inviteBusy, setInviteBusy] = useState(false);
-  const [modal, setModal] = useState(null); // {type:'add'|'edit'|'view'|'delete', user}
+
+  const [modal, setModal] = useState(null);
+
   const reload = useCallback(() => listUsers().then(setUsers), []);
-  useEffect(() => { reload(); }, [reload]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return users.filter((u) => (!s || u.name.toLowerCase().includes(s) || u.email.toLowerCase().includes(s)) && (!role || u.role === role));
+
+    return users.filter(
+      (u) =>
+        (!s ||
+          u.name.toLowerCase().includes(s) ||
+          u.email.toLowerCase().includes(s)) &&
+        (!role || u.role === role)
+    );
   }, [users, q, role]);
 
   const close = () => setModal(null);
+
   async function save(values) {
-    if (modal.type === 'add') { await createUser(values); toast('User added.'); }
-    else { await updateUser(modal.user.id, { name: values.name, email: values.email, mobile: values.mobile, role: values.role, organization: values.organization }, me.id); toast('User updated.'); if (modal.user.id === me.id) refresh(); }
-    close(); reload();
+    if (modal.type === 'add') {
+      await createUser(values);
+      toast('User added.');
+    } else {
+      await updateUser(
+        modal.user.id,
+        {
+          name: values.name,
+          email: values.email,
+          mobile: values.mobile,
+          role: values.role,
+          organization: values.organization,
+        },
+        me.id
+      );
+
+      toast('User updated.');
+
+      if (modal.user.id === me.id) refresh();
+    }
+
+    close();
+    reload();
   }
+
   async function changeStatus(u, s) {
-    try { await setStatus(u.id, s, me.id); toast(`${u.name} is now ${s}.`); reload(); } catch (e) { toast(e.message, 'error'); }
+    try {
+      await setStatus(u.id, s, me.id);
+      toast(`${u.name} is now ${s}.`);
+      reload();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
   }
+
   async function remove() {
-    try { await deleteUser(modal.user.id, me.id); toast('User deleted.'); close(); reload(); } catch (e) { toast(e.message, 'error'); close(); }
+    try {
+      await deleteUser(modal.user.id, me.id);
+      toast('User deleted.');
+      close();
+      reload();
+    } catch (e) {
+      toast(e.message, 'error');
+      close();
+    }
+  }
+
+  async function sendInvitation(e) {
+    e.preventDefault();
+
+    const invitedEmail = inviteEmail.trim().toLowerCase();
+
+    if (!invitedEmail) return;
+
+    setInviteBusy(true);
+    setInviteMessage('');
+
+    try {
+      const result = await createInvitation(invitedEmail, inviteRole);
+
+      setInviteMessage(
+        result.message || `Invitation email sent to ${invitedEmail}.`
+      );
+
+      setInviteEmail('');
+      toast('Invitation sent successfully.');
+    } catch (err) {
+      toast(err.message || 'Unable to send invitation.', 'error');
+    } finally {
+      setInviteBusy(false);
+    }
   }
 
   return (
     <>
-      <div className="page-head"><div><h1>User & Access Management</h1>
-      <p className="muted">
-        {shown.length} user(s). Manage registered users and their access.
-      </p></div>
-        <button className="btn primary" onClick={() => setModal({ type: 'add' })}><Plus size={16} /> Add user</button></div>
+      <div className="page-head">
+        <div>
+          <h1>User & Access Management</h1>
+          <p className="muted">
+            {shown.length} user(s). Manage registered users and their access.
+          </p>
+        </div>
+
+        <button
+          className="btn primary"
+          onClick={() => setModal({ type: 'add' })}
+        >
+          <Plus size={16} /> Add user
+        </button>
+      </div>
+
+      {/* Invitation section */}
       <section className="card" style={{ marginBottom: 18 }}>
         <h3>Invite a team member</h3>
-        <p className="muted">Create a single-use invitation link valid for 7 days. Send it to the invited person.</p>
-        <form className="row" onSubmit={async (e) => {
-          e.preventDefault(); setInviteBusy(true); setInviteLink('');
-          try {
-            const result = await createInvitation(inviteEmail, inviteRole);
-            const link = `${window.location.origin}/register?invite=${encodeURIComponent(result.token)}`;
-            setInviteLink(link); setInviteEmail('');
-          } catch (err) { toast(err.message, 'error'); }
-          finally { setInviteBusy(false); }
-        }}>
-          <input type="email" required placeholder="Invitee email" value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} />
-          <select value={inviteRole} onChange={e=>setInviteRole(e.target.value)}>
-            <option value="farmer">Farmer</option><option value="field_worker">Field Worker</option><option value="admin">Admin</option>
+
+        <p className="muted">
+          Send a secure, single-use invitation email. The invitation is valid
+          for 7 days.
+        </p>
+
+        <form className="row" onSubmit={sendInvitation}>
+          <input
+            type="email"
+            required
+            placeholder="Invitee email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+          />
+
+          <select
+            value={inviteRole}
+            onChange={(e) => setInviteRole(e.target.value)}
+          >
+            <option value="farmer">Farmer</option>
+            <option value="field_worker">Field Worker</option>
+            <option value="admin">Admin</option>
           </select>
-          <button className="btn primary" disabled={inviteBusy}>{inviteBusy ? 'Creating…' : 'Create invitation'}</button>
+
+          <button className="btn primary" disabled={inviteBusy}>
+            {inviteBusy ? 'Sending...' : 'Send Invitation'}
+          </button>
         </form>
-        {inviteLink && <div className="alert success" style={{marginTop:12}}>Invitation link (copy and send securely): <input readOnly value={inviteLink} onFocus={e=>e.target.select()} /><button className="btn ghost" type="button" onClick={()=>navigator.clipboard.writeText(inviteLink)}>Copy link</button></div>}
+
+        {inviteMessage && (
+          <div className="alert success" style={{ marginTop: 12 }}>
+            {inviteMessage}
+          </div>
+        )}
       </section>
+
+      {/* Search and role filter */}
       <div className="toolbar">
-        <div className="search"><Search size={16} /><input aria-label="Search users" placeholder="Search by name or email" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-        <select aria-label="Filter by role" value={role} onChange={(e) => setRole(e.target.value)}><option value="">All roles</option>{ROLES.map((r) => (
-  <option key={r} value={r}>
-    {roleLabel(r)}
-  </option>
-))}</select>
+        <div className="search">
+          <Search size={16} />
+          <input
+            aria-label="Search users"
+            placeholder="Search by name or email"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+
+        <select
+          aria-label="Filter by role"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+        >
+          <option value="">All roles</option>
+          {ROLES.map((r) => (
+            <option key={r} value={r}>
+              {roleLabel(r)}
+            </option>
+          ))}
+        </select>
       </div>
-      {shown.length === 0 ? <div className="empty"><p>No users match your search.</p></div> : (
-        <div className="table-wrap card"><table>
-          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody>{shown.map((u) => {
-            const self = u.id === me.id;
-            return (
-              <tr key={u.id}>
-                <td><strong>{u.name}</strong>{self && <small className="tagpill">You</small>}</td><td>{u.email}</td>
-               <td>
-  <span className={`badge ${u.role}`}>
-    {roleLabel(u.role)}
-  </span>
-</td>
-                <td><select className="status-select" aria-label={`Status for ${u.name}`} value={u.status} disabled={self} onChange={(e) => changeStatus(u, e.target.value)}>{STATUS.map((s) => <option key={s} value={s}>{cap(s)}</option>)}</select></td>
-                <td className="row-actions">
-                  <button className="icon-btn" aria-label={`View ${u.name}`} onClick={() => setModal({ type: 'view', user: u })}><Eye size={16} /></button>
-                  <button className="icon-btn" aria-label={`Edit ${u.name}`} onClick={() => setModal({ type: 'edit', user: u })}><Pencil size={16} /></button>
-                  <button className="icon-btn danger" aria-label={`Delete ${u.name}`} disabled={self} title={self ? 'You cannot delete your own account' : ''} onClick={() => setModal({ type: 'delete', user: u })}><Trash2 size={16} /></button>
-                </td>
-              </tr>);
-          })}</tbody></table></div>
+
+      {/* User table */}
+      {shown.length === 0 ? (
+        <div className="empty">
+          <p>No users match your search.</p>
+        </div>
+      ) : (
+        <div className="table-wrap card">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {shown.map((u) => {
+                const self = u.id === me.id;
+
+                return (
+                  <tr key={u.id}>
+                    <td>
+                      <strong>{u.name}</strong>
+                      {self && <small className="tagpill">You</small>}
+                    </td>
+
+                    <td>{u.email}</td>
+
+                    <td>
+                      <span className={`badge ${u.role}`}>
+                        {roleLabel(u.role)}
+                      </span>
+                    </td>
+
+                    <td>
+                      <select
+                        className="status-select"
+                        aria-label={`Status for ${u.name}`}
+                        value={u.status}
+                        disabled={self}
+                        onChange={(e) => changeStatus(u, e.target.value)}
+                      >
+                        {STATUS.map((s) => (
+                          <option key={s} value={s}>
+                            {cap(s)}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
+                    <td className="row-actions">
+                      <button
+                        className="icon-btn"
+                        aria-label={`View ${u.name}`}
+                        onClick={() => setModal({ type: 'view', user: u })}
+                      >
+                        <Eye size={16} />
+                      </button>
+
+                      <button
+                        className="icon-btn"
+                        aria-label={`Edit ${u.name}`}
+                        onClick={() => setModal({ type: 'edit', user: u })}
+                      >
+                        <Pencil size={16} />
+                      </button>
+
+                      <button
+                        className="icon-btn danger"
+                        aria-label={`Delete ${u.name}`}
+                        disabled={self}
+                        title={self ? 'You cannot delete your own account' : ''}
+                        onClick={() => setModal({ type: 'delete', user: u })}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      {/* View user details */}
       {modal?.type === 'view' && (
         <Modal title="User details" onClose={close}>
-          <dl className="details one">{[['Name', modal.user.name], ['Email', modal.user.email], ['Mobile', modal.user.mobile || '—'], ['Role', roleLabel(modal.user.role)], ['Status', cap(modal.user.status)],
-            ['Organization', modal.user.organization || '—'], ['Created', new Date(modal.user.createdAt).toLocaleString()]].map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
-        </Modal>)}
+          <dl className="details one">
+            {[
+              ['Name', modal.user.name],
+              ['Email', modal.user.email],
+              ['Mobile', modal.user.mobile || '—'],
+              ['Role', roleLabel(modal.user.role)],
+              ['Status', cap(modal.user.status)],
+              ['Organization', modal.user.organization || '—'],
+              ['Created', new Date(modal.user.createdAt).toLocaleString()],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <dt>{k}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </Modal>
+      )}
+
+      {/* Add or edit user */}
       {(modal?.type === 'add' || modal?.type === 'edit') && (
-        <Modal wide title={modal.type === 'add' ? 'Add user' : 'Edit user'} onClose={close}>
-          <UserForm initial={modal.user} isSelf={modal.user?.id === me.id} onSubmit={save} onCancel={close} />
-        </Modal>)}
-      {modal?.type === 'delete' && <ConfirmDialog title="Delete user" message={<p>Delete <strong>{modal.user.name}</strong> ({modal.user.email})? This cannot be undone.</p>} onCancel={close} onConfirm={remove} />}
+        <Modal
+          wide
+          title={modal.type === 'add' ? 'Add user' : 'Edit user'}
+          onClose={close}
+        >
+          <UserForm
+            initial={modal.user}
+            isSelf={modal.user?.id === me.id}
+            onSubmit={save}
+            onCancel={close}
+          />
+        </Modal>
+      )}
+
+      {/* Delete user */}
+      {modal?.type === 'delete' && (
+        <ConfirmDialog
+          title="Delete user"
+          message={
+            <p>
+              Delete <strong>{modal.user.name}</strong> ({modal.user.email})?
+              This cannot be undone.
+            </p>
+          }
+          onCancel={close}
+          onConfirm={remove}
+        />
+      )}
     </>
   );
 }

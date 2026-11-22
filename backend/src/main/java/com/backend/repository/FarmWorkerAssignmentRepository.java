@@ -1,3 +1,4 @@
+
 package com.backend.repository;
 
 import com.backend.entity.FarmWorkerAssignment;
@@ -15,4 +16,10 @@ public interface FarmWorkerAssignmentRepository
             Long id, Long farmId);
 
     boolean existsByFarmIdAndWorkerId(Long farmId, Long workerId);
+
+    List<FarmWorkerAssignment> findByWorker_IdAndStatusIgnoreCase(
+            Long workerId, String status);
+
+            boolean existsByFarmIdAndWorkerIdAndStatusIgnoreCase(
+        Long farmId, Long workerId, String status);
 }

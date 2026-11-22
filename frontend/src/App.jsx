@@ -1,15 +1,21 @@
+
 import FarmResourcePlanning from './pages/FarmResourcePlanning';
 import EquipmentBookings from './pages/EquipmentBookings';
 import EquipmentManagement from './pages/EquipmentManagement';
-import InventoryManagement from "./pages/InventoryManagement";
+import InventoryManagement from './pages/InventoryManagement';
+
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { can } from './config/permissions';
+
 import DashboardLayout from './layouts/DashboardLayout';
+
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
+import AcceptInvitation from './pages/auth/AcceptInvitation';
+
 import Overview from './pages/Overview';
 import UserManagement from './pages/UserManagement';
 import FarmManagement from './pages/FarmManagement';
@@ -30,6 +36,7 @@ function Guard({ perm, children }) {
 
   return can(user.role, perm) ? children : <AccessDenied />;
 }
+
 function PublicOnly({ children }) {
   const { user } = useAuth();
   return user ? <Navigate to="/overview" replace /> : children;
@@ -38,60 +45,158 @@ function PublicOnly({ children }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
-      <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
-      <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
+      {/* Public authentication routes */}
       <Route
-  path="/reset-password"
-  element={<PublicOnly><ResetPassword /></PublicOnly>}
-/>
+        path="/login"
+        element={
+          <PublicOnly>
+            <Login />
+          </PublicOnly>
+        }
+      />
+
+      <Route
+        path="/register"
+        element={
+          <PublicOnly>
+            <Register />
+          </PublicOnly>
+        }
+      />
+
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicOnly>
+            <ForgotPassword />
+          </PublicOnly>
+        }
+      />
+
+      <Route
+        path="/reset-password"
+        element={
+          <PublicOnly>
+            <ResetPassword />
+          </PublicOnly>
+        }
+      />
+
+      {/* Invitation acceptance route */}
+      <Route
+        path="/accept-invitation"
+        element={
+          <PublicOnly>
+            <AcceptInvitation />
+          </PublicOnly>
+        }
+      />
+
+      {/* Protected dashboard routes */}
       <Route element={<DashboardLayout />}>
-        <Route path="/overview" element={<Guard perm="overview"><Overview /></Guard>} />
-        <Route path="/users" element={<Guard perm="users"><UserManagement /></Guard>} />
-        <Route path="/farms" element={<Guard perm="farms"><FarmManagement /></Guard>} />
-        <Route path="/farms/:id" element={<Guard perm="farms"><FarmDetails /></Guard>} />
-        <Route path="/profile" element={<Guard perm="profile"><Profile /></Guard>} />
-      <Route
-  path="/inventory"
-  element={
-    <Guard perm="inventory">
-      <InventoryManagement />
-    </Guard>
-  }
-/>
-<Route
-  path="/equipment"
-  element={
-    <Guard perm="equipment">
-      <EquipmentManagement />
-    </Guard>
-  }
-/>
-<Route
-  path="/equipment/bookings"
-  element={
-    <Guard perm="equipment">
-      <EquipmentBookings />
-    </Guard>
-  }
-/>
-<Route
-  path="/resources"
-  element={
-    <Guard perm="resources">
-      <FarmResourcePlanning />
-    </Guard>
-  }
-/>
-        <Route path="/weather" element={<Guard perm="weather"><WeatherMonitoring /></Guard>} />
         <Route
-          path="/ai-assistant"
-          element={<AIAssistant />}
+          path="/overview"
+          element={
+            <Guard perm="overview">
+              <Overview />
+            </Guard>
+          }
         />
-        <Route path="/notifications" element={<Guard perm="notifications"><Notifications /></Guard>} />
+
+        <Route
+          path="/users"
+          element={
+            <Guard perm="users">
+              <UserManagement />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/farms"
+          element={
+            <Guard perm="farms">
+              <FarmManagement />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/farms/:id"
+          element={
+            <Guard perm="farms">
+              <FarmDetails />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <Guard perm="profile">
+              <Profile />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/inventory"
+          element={
+            <Guard perm="inventory">
+              <InventoryManagement />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/equipment"
+          element={
+            <Guard perm="equipment">
+              <EquipmentManagement />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/equipment/bookings"
+          element={
+            <Guard perm="equipment">
+              <EquipmentBookings />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/resources"
+          element={
+            <Guard perm="resources">
+              <FarmResourcePlanning />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/weather"
+          element={
+            <Guard perm="weather">
+              <WeatherMonitoring />
+            </Guard>
+          }
+        />
+
+        <Route path="/ai-assistant" element={<AIAssistant />} />
+
+        <Route
+          path="/notifications"
+          element={
+            <Guard perm="notifications">
+              <Notifications />
+            </Guard>
+          }
+        />
       </Route>
-      <Route path="/" element={<Navigate to="/overview" replace />} />
-      <Route path="*" element={<Navigate to="/overview" replace />} />
+
+      {/* Activity history */}
       <Route
         path="/activity-history"
         element={
@@ -100,6 +205,10 @@ export default function App() {
           </Guard>
         }
       />
+
+      {/* Default routes */}
+      <Route path="/" element={<Navigate to="/overview" replace />} />
+      <Route path="*" element={<Navigate to="/overview" replace />} />
     </Routes>
   );
 }
