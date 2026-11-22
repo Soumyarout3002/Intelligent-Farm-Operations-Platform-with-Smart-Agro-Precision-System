@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +37,7 @@ public class FarmTaskService {
             User createdBy,
             FarmTaskRequest request) {
 
-        Farm farm = getOwnedFarm(farmId, ownerId);
+        Farm farm = getFarmForTaskCreation(farmId, ownerId, createdBy);
 
         FarmWorkerAssignment assignment =
                 assignmentRepository.findByIdAndFarmId(
@@ -51,8 +53,7 @@ public class FarmTaskService {
         }
 
         if (request.getDueDate() != null
-                && request.getDueDate().isBefore(
-                        java.time.LocalDate.now())) {
+                && request.getDueDate().isBefore(LocalDate.now())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Due date cannot be in the past");
@@ -65,7 +66,7 @@ public class FarmTaskService {
                 .title(request.getTitle().trim())
                 .description(request.getDescription())
                 .dueDate(request.getDueDate())
-                .priority(request.getPriority().toUpperCase())
+                .priority(request.getPriority().toUpperCase(Locale.ROOT))
                 .status("TODO")
                 .build();
 
@@ -75,13 +76,18 @@ public class FarmTaskService {
     @Transactional(readOnly = true)
     public List<FarmTaskResponse> getFarmTasks(
             Long farmId,
-            Long ownerId) {
+            User user) {
 
-        getOwnedFarm(farmId, ownerId);
+        verifyFarmReadAccess(farmId, user);
 
         return taskRepository
                 .findByFarmIdOrderByCreatedAtDesc(farmId)
                 .stream()
+                .filter(task -> !isFieldWorker(user)
+                        || task.getAssignedWorker()
+                        .getWorker()
+                        .getId()
+                        .equals(user.getId()))
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -89,10 +95,10 @@ public class FarmTaskService {
     public FarmTaskResponse updateTaskStatus(
             Long farmId,
             Long taskId,
-            Long ownerId,
+            User user,
             String status) {
 
-        getOwnedFarm(farmId, ownerId);
+        verifyFarmReadAccess(farmId, user);
 
         FarmTask task = taskRepository.findByIdAndFarmId(
                         taskId, farmId)
@@ -100,10 +106,22 @@ public class FarmTaskService {
                         HttpStatus.NOT_FOUND,
                         "Task not found"));
 
-        String normalizedStatus = status.trim().toUpperCase();
+        if (isFieldWorker(user)
+                && !task.getAssignedWorker()
+                .getWorker()
+                .getId()
+                .equals(user.getId())) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can update only tasks assigned to you");
+        }
+
+        String normalizedStatus = status.trim().toUpperCase(Locale.ROOT);
 
         if (!List.of("TODO", "IN_PROGRESS", "DONE")
                 .contains(normalizedStatus)) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Status must be TODO, IN_PROGRESS or DONE");
@@ -112,6 +130,73 @@ public class FarmTaskService {
         task.setStatus(normalizedStatus);
 
         return mapToResponse(taskRepository.save(task));
+    }
+
+    private Farm getFarmForTaskCreation(
+            Long farmId,
+            Long ownerId,
+            User createdBy) {
+
+        String role = createdBy.getRole();
+
+        if (role != null && "ADMIN".equalsIgnoreCase(role)) {
+            return farmRepository.findById(farmId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Farm not found"));
+        }
+
+        if (isFieldWorker(createdBy)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Field workers cannot assign tasks");
+        }
+
+        if (role != null && "FARMER".equalsIgnoreCase(role)) {
+            return getOwnedFarm(farmId, ownerId);
+        }
+
+        throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "You are not allowed to assign farm tasks");
+    }
+
+    private void verifyFarmReadAccess(Long farmId, User user) {
+
+        if (user.getRole() != null
+                && "ADMIN".equalsIgnoreCase(user.getRole())) {
+
+            if (!farmRepository.existsById(farmId)) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Farm not found");
+            }
+            return;
+        }
+
+        if (isFieldWorker(user)) {
+
+            boolean assigned = assignmentRepository
+                    .findByWorker_IdAndStatusIgnoreCase(
+                            user.getId(), "ACTIVE")
+                    .stream()
+                    .anyMatch(a -> a.getFarm() != null
+                            && a.getFarm().getId().equals(farmId));
+
+            if (!assigned) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Farm not found or not assigned to this worker");
+            }
+            return;
+        }
+
+        getOwnedFarm(farmId, user.getId());
+    }
+
+    private boolean isFieldWorker(User user) {
+        return user.getRole() != null
+                && "FIELD_WORKER".equalsIgnoreCase(user.getRole());
     }
 
     private Farm getOwnedFarm(Long farmId, Long ownerId) {

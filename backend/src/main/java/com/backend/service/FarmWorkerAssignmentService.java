@@ -1,3 +1,4 @@
+
 package com.backend.service;
 
 import com.backend.dto.farm.WorkerAssignmentRequest;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -29,10 +31,11 @@ public class FarmWorkerAssignmentService {
 
     public WorkerAssignmentResponse assignWorker(
             Long farmId,
-            Long ownerId,
+            Long userId,
+            String role,
             WorkerAssignmentRequest request) {
 
-        Farm farm = getOwnedFarm(farmId, ownerId);
+        Farm farm = getManageableFarm(farmId, userId, role);
 
         User worker = userRepository.findById(request.getWorkerId())
                 .orElseThrow(() -> new ResponseStatusException(
@@ -52,7 +55,6 @@ public class FarmWorkerAssignmentService {
 
         if (assignmentRepository.existsByFarmIdAndWorkerId(
                 farmId, worker.getId())) {
-
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Worker is already assigned to this farm");
@@ -68,16 +70,16 @@ public class FarmWorkerAssignmentService {
                         .notes(request.getNotes())
                         .build();
 
-        return mapToResponse(
-                assignmentRepository.save(assignment));
+        return mapToResponse(assignmentRepository.save(assignment));
     }
 
     @Transactional(readOnly = true)
     public List<WorkerAssignmentResponse> getFarmWorkers(
             Long farmId,
-            Long ownerId) {
+            Long userId,
+            String role) {
 
-        getOwnedFarm(farmId, ownerId);
+        getReadableFarm(farmId, userId, role);
 
         return assignmentRepository.findByFarmId(farmId)
                 .stream()
@@ -89,23 +91,22 @@ public class FarmWorkerAssignmentService {
     public WorkerAssignmentResponse getAssignment(
             Long farmId,
             Long assignmentId,
-            Long ownerId) {
+            Long userId,
+            String role) {
 
-        getOwnedFarm(farmId, ownerId);
+        getReadableFarm(farmId, userId, role);
 
-        FarmWorkerAssignment assignment =
-                findAssignment(farmId, assignmentId);
-
-        return mapToResponse(assignment);
+        return mapToResponse(findAssignment(farmId, assignmentId));
     }
 
     public WorkerAssignmentResponse updateAssignment(
             Long farmId,
             Long assignmentId,
-            Long ownerId,
+            Long userId,
+            String role,
             WorkerAssignmentRequest request) {
 
-        getOwnedFarm(farmId, ownerId);
+        getManageableFarm(farmId, userId, role);
 
         FarmWorkerAssignment assignment =
                 findAssignment(farmId, assignmentId);
@@ -117,16 +118,16 @@ public class FarmWorkerAssignmentService {
             assignment.setStatus(request.getStatus());
         }
 
-        return mapToResponse(
-                assignmentRepository.save(assignment));
+        return mapToResponse(assignmentRepository.save(assignment));
     }
 
     public void removeWorker(
             Long farmId,
             Long assignmentId,
-            Long ownerId) {
+            Long userId,
+            String role) {
 
-        getOwnedFarm(farmId, ownerId);
+        getManageableFarm(farmId, userId, role);
 
         FarmWorkerAssignment assignment =
                 findAssignment(farmId, assignmentId);
@@ -134,11 +135,44 @@ public class FarmWorkerAssignmentService {
         assignmentRepository.delete(assignment);
     }
 
-    private Farm getOwnedFarm(Long farmId, Long ownerId) {
+    private Farm getReadableFarm(
+            Long farmId, Long userId, String role) {
 
-        return farmRepository.findByIdAndOwnerId(farmId, ownerId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Farm not found"));
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            return farmRepository.findById(farmId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Farm not found"));
+        }
+
+        if ("FARMER".equalsIgnoreCase(role)) {
+            return farmRepository.findByIdAndOwnerId(farmId, userId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Farm not found"));
+        }
+
+        throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "You are not allowed to view farm workers");
+    }
+
+    private Farm getManageableFarm(
+            Long farmId, Long userId, String role) {
+
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            return farmRepository.findById(farmId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Farm not found"));
+        }
+
+        if ("FARMER".equalsIgnoreCase(role)) {
+            return farmRepository.findByIdAndOwnerId(farmId, userId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Farm not found"));
+        }
+
+        throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "You are not allowed to manage farm workers");
     }
 
     private FarmWorkerAssignment findAssignment(

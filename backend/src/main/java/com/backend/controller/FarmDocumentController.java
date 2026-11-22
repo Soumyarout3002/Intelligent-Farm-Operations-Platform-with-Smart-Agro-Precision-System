@@ -1,3 +1,4 @@
+
 package com.backend.controller;
 
 import com.backend.dto.farm.FarmDocumentResponse;
@@ -5,7 +6,6 @@ import com.backend.entity.User;
 import com.backend.service.FarmDocumentService;
 
 import jakarta.servlet.http.HttpServletRequest;
-
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.core.io.Resource;
@@ -26,7 +26,7 @@ public class FarmDocumentController {
 
     private final FarmDocumentService documentService;
 
-    private Long getOwnerId(HttpServletRequest request) {
+    private User getAuthenticatedUser(HttpServletRequest request) {
 
         Object authenticatedUser =
                 request.getAttribute("authenticatedUser");
@@ -37,7 +37,7 @@ public class FarmDocumentController {
                     "Authentication required");
         }
 
-        return user.getId();
+        return user;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -48,9 +48,12 @@ public class FarmDocumentController {
                     String description,
             HttpServletRequest httpRequest) {
 
+        User user = getAuthenticatedUser(httpRequest);
+
         FarmDocumentResponse response =
                 documentService.uploadDocument(
-                        farmId, getOwnerId(httpRequest), file, description);
+                        farmId, user.getId(), user.getRole(),
+                        file, description);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -60,9 +63,11 @@ public class FarmDocumentController {
             @PathVariable Long farmId,
             HttpServletRequest httpRequest) {
 
+        User user = getAuthenticatedUser(httpRequest);
+
         return ResponseEntity.ok(
                 documentService.getFarmDocuments(
-                        farmId, getOwnerId(httpRequest)));
+                        farmId, user.getId(), user.getRole()));
     }
 
     @GetMapping("/{documentId}/download")
@@ -71,8 +76,10 @@ public class FarmDocumentController {
             @PathVariable Long documentId,
             HttpServletRequest httpRequest) {
 
+        User user = getAuthenticatedUser(httpRequest);
+
         Resource resource = documentService.downloadDocument(
-                farmId, documentId, getOwnerId(httpRequest));
+                farmId, documentId, user.getId(), user.getRole());
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
@@ -89,8 +96,10 @@ public class FarmDocumentController {
             @PathVariable Long documentId,
             HttpServletRequest httpRequest) {
 
+        User user = getAuthenticatedUser(httpRequest);
+
         documentService.deleteDocument(
-                farmId, documentId, getOwnerId(httpRequest));
+                farmId, documentId, user.getId(), user.getRole());
 
         return ResponseEntity.noContent().build();
     }

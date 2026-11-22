@@ -323,7 +323,13 @@ public class WeatherService {
 
         Farm farm;
 
-        if ("FIELD_WORKER".equalsIgnoreCase(role)) {
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            farm = farmRepository.findById(farmId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Farm not found"));
+
+        } else if ("FIELD_WORKER".equalsIgnoreCase(role)) {
 
             boolean assigned = assignmentRepository
                     .findByWorker_IdAndStatusIgnoreCase(userId, "ACTIVE")

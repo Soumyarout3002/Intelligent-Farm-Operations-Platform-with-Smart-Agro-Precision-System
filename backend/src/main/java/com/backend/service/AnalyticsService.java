@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 public class AnalyticsService {
 
     private final FarmRepository farmRepository;
+    private final FarmWorkerAssignmentRepository assignmentRepository;
     private final PlotRepository plotRepository;
     private final CropCycleRepository cropCycleRepository;
     private final HarvestRecordRepository harvestRecordRepository;
@@ -37,13 +38,14 @@ public class AnalyticsService {
     @Transactional(readOnly = true)
     public DashboardAnalyticsResponse getDashboardAnalytics(
             Long ownerId,
+            String role,
             Long farmId,
             String cropName,
             LocalDate startDate,
             LocalDate endDate) {
 
         validateDateRange(startDate, endDate);
-        List<Farm> ownedFarms = resolveOwnedFarms(farmId, ownerId);
+        List<Farm> ownedFarms = resolveOwnedFarms(farmId, ownerId, role);
         Set<Long> allowedFarmIds = extractFarmIds(ownedFarms);
         String normalizedCrop = normalizeFilter(cropName);
 
@@ -163,6 +165,7 @@ public class AnalyticsService {
     @Transactional(readOnly = true)
     public List<YieldAnalyticsResponse> getYieldAnalytics(
             Long ownerId,
+            String role,
             Long farmId,
             String cropName,
             String season,
@@ -170,7 +173,7 @@ public class AnalyticsService {
             LocalDate endDate) {
 
         validateDateRange(startDate, endDate);
-        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId));
+        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId, role));
         String normalizedCrop = normalizeFilter(cropName);
         String normalizedSeason = normalizeFilter(season);
 
@@ -259,6 +262,7 @@ public class AnalyticsService {
     @Transactional(readOnly = true)
     public List<CostProfitAnalyticsResponse> getCostProfitAnalytics(
             Long ownerId,
+            String role,
             Long farmId,
             String cropName,
             String season,
@@ -266,7 +270,7 @@ public class AnalyticsService {
             LocalDate endDate) {
 
         validateDateRange(startDate, endDate);
-        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId));
+        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId, role));
         String normalizedCrop = normalizeFilter(cropName);
         String normalizedSeason = normalizeFilter(season);
 
@@ -402,12 +406,13 @@ public class AnalyticsService {
     @Transactional(readOnly = true)
     public WaterUsageAnalyticsResponse getWaterUsageAnalytics(
             Long ownerId,
+            String role,
             Long farmId,
             LocalDate startDate,
             LocalDate endDate) {
 
         validateDateRange(startDate, endDate);
-        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId));
+        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId, role));
 
         List<IrrigationSchedule> schedules = irrigationScheduleRepository.findAll().stream()
                 .filter(i -> allowedFarmIds.contains(i.getFarm().getId()))
@@ -492,13 +497,14 @@ public class AnalyticsService {
     @Transactional(readOnly = true)
     public MachineryAnalyticsResponse getMachineryAnalytics(
             Long ownerId,
+            String role,
             Long farmId,
             String cropName,
             LocalDate startDate,
             LocalDate endDate) {
 
         validateDateRange(startDate, endDate);
-        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId));
+        Set<Long> allowedFarmIds = extractFarmIds(resolveOwnedFarms(farmId, ownerId, role));
         String normalizedCrop = normalizeFilter(cropName);
 
         List<EquipmentUsage> usages = equipmentUsageRepository.findAll().stream()
@@ -597,24 +603,36 @@ public class AnalyticsService {
         }
     }
 
-    private List<Farm> resolveOwnedFarms(Long farmId, Long ownerId) {
-        if (farmId != null) {
-            Optional<Farm> ownedFarm = farmRepository.findByIdAndOwnerId(farmId, ownerId);
-            if (ownedFarm.isPresent()) {
-                return List.of(ownedFarm.get());
-            }
-            if (farmRepository.existsById(farmId)) {
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
-                        "You do not have access to this farm"
-                );
-            }
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Farm not found with id: " + farmId
-            );
+    private List<Farm> resolveOwnedFarms(Long farmId, Long userId, String role) {
+        List<Farm> visibleFarms;
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            visibleFarms = farmRepository.findAll();
+        } else if ("FIELD_WORKER".equalsIgnoreCase(role)) {
+            visibleFarms = assignmentRepository
+                    .findByWorker_IdAndStatusIgnoreCase(userId, "ACTIVE")
+                    .stream()
+                    .map(assignment -> assignment.getFarm())
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+        } else {
+            visibleFarms = farmRepository.findByOwnerId(userId);
         }
-        return farmRepository.findByOwnerId(ownerId);
+
+        if (farmId == null) {
+            return visibleFarms;
+        }
+
+        return visibleFarms.stream()
+                .filter(farm -> farm.getId().equals(farmId))
+                .findFirst()
+                .map(List::of)
+                .orElseThrow(() -> new ResponseStatusException(
+                        farmRepository.existsById(farmId)
+                                ? HttpStatus.FORBIDDEN : HttpStatus.NOT_FOUND,
+                        farmRepository.existsById(farmId)
+                                ? "You do not have access to this farm"
+                                : "Farm not found with id: " + farmId));
     }
 
     private Set<Long> extractFarmIds(List<Farm> farms) {

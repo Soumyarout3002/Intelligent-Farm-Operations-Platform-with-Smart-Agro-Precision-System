@@ -1,3 +1,4 @@
+
 package com.backend.controller;
 
 import com.backend.dto.farm.WorkerAssignmentRequest;
@@ -23,18 +24,17 @@ public class FarmWorkerAssignmentController {
 
     private final FarmWorkerAssignmentService assignmentService;
 
-    private Long getOwnerId(HttpServletRequest request) {
-
-        Object authenticatedUser =
-                request.getAttribute("authenticatedUser");
+    private User getAuthenticatedUser(HttpServletRequest request) {
+        Object authenticatedUser = request.getAttribute("authenticatedUser");
 
         if (!(authenticatedUser instanceof User user)) {
             throw new org.springframework.web.server.ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
-                    "Authentication required");
+                    "Authentication required"
+            );
         }
 
-        return user.getId();
+        return user;
     }
 
     @PostMapping
@@ -43,9 +43,11 @@ public class FarmWorkerAssignmentController {
             @Valid @RequestBody WorkerAssignmentRequest request,
             HttpServletRequest httpRequest) {
 
-        WorkerAssignmentResponse response =
-                assignmentService.assignWorker(
-                        farmId, getOwnerId(httpRequest), request);
+        User user = getAuthenticatedUser(httpRequest);
+
+        WorkerAssignmentResponse response = assignmentService.assignWorker(
+                farmId, user.getId(), user.getRole(), request
+        );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -55,9 +57,13 @@ public class FarmWorkerAssignmentController {
             @PathVariable Long farmId,
             HttpServletRequest httpRequest) {
 
+        User user = getAuthenticatedUser(httpRequest);
+
         return ResponseEntity.ok(
                 assignmentService.getFarmWorkers(
-                        farmId, getOwnerId(httpRequest)));
+                        farmId, user.getId(), user.getRole()
+                )
+        );
     }
 
     @GetMapping("/{assignmentId}")
@@ -66,9 +72,13 @@ public class FarmWorkerAssignmentController {
             @PathVariable Long assignmentId,
             HttpServletRequest httpRequest) {
 
+        User user = getAuthenticatedUser(httpRequest);
+
         return ResponseEntity.ok(
                 assignmentService.getAssignment(
-                        farmId, assignmentId, getOwnerId(httpRequest)));
+                        farmId, assignmentId, user.getId(), user.getRole()
+                )
+        );
     }
 
     @PutMapping("/{assignmentId}")
@@ -78,12 +88,14 @@ public class FarmWorkerAssignmentController {
             @Valid @RequestBody WorkerAssignmentRequest request,
             HttpServletRequest httpRequest) {
 
+        User user = getAuthenticatedUser(httpRequest);
+
         return ResponseEntity.ok(
                 assignmentService.updateAssignment(
-                        farmId,
-                        assignmentId,
-                        getOwnerId(httpRequest),
-                        request));
+                        farmId, assignmentId, user.getId(),
+                        user.getRole(), request
+                )
+        );
     }
 
     @DeleteMapping("/{assignmentId}")
@@ -92,8 +104,11 @@ public class FarmWorkerAssignmentController {
             @PathVariable Long assignmentId,
             HttpServletRequest httpRequest) {
 
+        User user = getAuthenticatedUser(httpRequest);
+
         assignmentService.removeWorker(
-                farmId, assignmentId, getOwnerId(httpRequest));
+                farmId, assignmentId, user.getId(), user.getRole()
+        );
 
         return ResponseEntity.noContent().build();
     }

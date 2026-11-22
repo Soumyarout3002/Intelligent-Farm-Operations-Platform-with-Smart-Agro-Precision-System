@@ -31,7 +31,10 @@ public class NotificationService {
             String type,
             String dedupeKey) {
 
-        if (notificationRepository.existsByDedupeKey(dedupeKey)) {
+        // Dedupe independently for each recipient. A weather alert already sent
+        // to an Admin must not suppress the same alert for an assigned Field Worker.
+        String recipientDedupeKey = userId + ":" + dedupeKey;
+        if (notificationRepository.existsByDedupeKey(recipientDedupeKey)) {
             return;
         }
 
@@ -45,7 +48,7 @@ public class NotificationService {
                 .title(title)
                 .message(message)
                 .type(type)
-                .dedupeKey(dedupeKey)
+                .dedupeKey(recipientDedupeKey)
                 .read(false)
                 .build();
 

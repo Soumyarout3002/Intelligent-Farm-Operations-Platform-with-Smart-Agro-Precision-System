@@ -1,3 +1,4 @@
+
 package com.backend.service;
 
 import com.backend.dto.irrigation.*;
@@ -5,13 +6,18 @@ import com.backend.dto.weather.DailyForecastResponse;
 import com.backend.entity.Farm;
 import com.backend.entity.IrrigationRecord;
 import com.backend.entity.IrrigationSchedule;
+import com.backend.entity.User;
 import com.backend.repository.FarmRepository;
+import com.backend.repository.FarmWorkerAssignmentRepository;
 import com.backend.repository.IrrigationRecordRepository;
 import com.backend.repository.IrrigationScheduleRepository;
+import com.backend.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.transaction.annotation.Transactional;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -23,13 +29,14 @@ import java.util.List;
 public class IrrigationService {
 
     private final FarmRepository farmRepository;
+    private final UserRepository userRepository;
+    private final FarmWorkerAssignmentRepository assignmentRepository;
     private final IrrigationScheduleRepository scheduleRepository;
     private final IrrigationRecordRepository recordRepository;
     private final WeatherService weatherService;
     private final NotificationService notificationService;
 
     // 1. Create schedule
-
     @Transactional
     public IrrigationScheduleResponse createSchedule(
             Long farmId,
@@ -37,6 +44,7 @@ public class IrrigationService {
             IrrigationScheduleRequest request) {
 
         Farm farm = getFarm(farmId, ownerId);
+        ensureScheduleManager(ownerId);
 
         IrrigationSchedule schedule = IrrigationSchedule.builder()
                 .farm(farm)
@@ -47,8 +55,7 @@ public class IrrigationService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return toScheduleResponse(
-                scheduleRepository.save(schedule));
+        return toScheduleResponse(scheduleRepository.save(schedule));
     }
 
     // 2. Get all schedules
@@ -58,15 +65,14 @@ public class IrrigationService {
 
         getFarm(farmId, ownerId);
 
-        return scheduleRepository
-        .findSchedulesWithFarm(farmId)
-        .stream()
-        .map(this::toScheduleResponse)
-        .toList();      
+        return scheduleRepository.findSchedulesWithFarm(farmId)
+                .stream()
+                .map(this::toScheduleResponse)
+                .toList();
     }
 
     // 3. Get one schedule
-    @Transactional(readOnly=true)
+    @Transactional(readOnly = true)
     public IrrigationScheduleResponse getSchedule(
             Long farmId,
             Long scheduleId,
@@ -74,12 +80,10 @@ public class IrrigationService {
 
         getFarm(farmId, ownerId);
 
-        return toScheduleResponse(
-                getScheduleEntity(farmId, scheduleId));
+        return toScheduleResponse(getScheduleEntity(farmId, scheduleId));
     }
 
     // 4. Update schedule
-
     @Transactional
     public IrrigationScheduleResponse updateSchedule(
             Long farmId,
@@ -88,11 +92,11 @@ public class IrrigationService {
             IrrigationScheduleRequest request) {
 
         getFarm(farmId, ownerId);
+        ensureScheduleManager(ownerId);
 
-        IrrigationSchedule schedule =
-                getScheduleEntity(farmId, scheduleId);
+        IrrigationSchedule schedule = getScheduleEntity(farmId, scheduleId);
 
-        if (!schedule.getStatus().equals("SCHEDULED")) {
+        if (!"SCHEDULED".equals(schedule.getStatus())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Only scheduled irrigation can be updated"
@@ -100,17 +104,14 @@ public class IrrigationService {
         }
 
         schedule.setScheduledAt(request.getScheduledAt());
-        schedule.setWaterAmountLiters(
-                request.getWaterAmountLiters());
+        schedule.setWaterAmountLiters(request.getWaterAmountLiters());
         schedule.setNotes(request.getNotes());
         schedule.setUpdatedAt(LocalDateTime.now());
 
-        return toScheduleResponse(
-                scheduleRepository.save(schedule));
+        return toScheduleResponse(scheduleRepository.save(schedule));
     }
 
     // 5. Delete schedule
-
     @Transactional
     public void deleteSchedule(
             Long farmId,
@@ -118,11 +119,11 @@ public class IrrigationService {
             Long ownerId) {
 
         getFarm(farmId, ownerId);
+        ensureScheduleManager(ownerId);
 
-        IrrigationSchedule schedule =
-                getScheduleEntity(farmId, scheduleId);
+        IrrigationSchedule schedule = getScheduleEntity(farmId, scheduleId);
 
-        if (!schedule.getStatus().equals("SCHEDULED")) {
+        if (!"SCHEDULED".equals(schedule.getStatus())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Only scheduled irrigation can be deleted"
@@ -133,7 +134,6 @@ public class IrrigationService {
     }
 
     // 6. Record completed or skipped irrigation
-
     @Transactional
     public IrrigationRecordResponse recordIrrigation(
             Long farmId,
@@ -141,53 +141,49 @@ public class IrrigationService {
             Long ownerId,
             IrrigationRecordRequest request) {
 
-        getFarm(farmId, ownerId);
-
         Farm farm = getFarm(farmId, ownerId);
+        IrrigationSchedule schedule = getScheduleEntity(farmId, scheduleId);
 
-IrrigationSchedule schedule =
-        getScheduleEntity(farmId, scheduleId);
+        if (!"SCHEDULED".equals(schedule.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "This irrigation schedule has already been recorded"
+            );
+        }
 
-if (!schedule.getStatus().equals("SCHEDULED")) {
-    throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST,
-            "This irrigation schedule has already been recorded"
-    );
-}
+        String action = request.getAction().toUpperCase();
 
-String action = request.getAction().toUpperCase();
+        IrrigationRecord record = IrrigationRecord.builder()
+                .schedule(schedule)
+                .action(action)
+                .notes(request.getNotes())
+                .recordedAt(LocalDateTime.now())
+                .build();
 
-IrrigationRecord record = IrrigationRecord.builder()
-        .schedule(schedule)
-        .action(action)
-        .notes(request.getNotes())
-        .recordedAt(LocalDateTime.now())
-        .build();
+        schedule.setStatus(action);
+        schedule.setUpdatedAt(LocalDateTime.now());
 
-schedule.setStatus(action);
-schedule.setUpdatedAt(LocalDateTime.now());
+        scheduleRepository.save(schedule);
 
-scheduleRepository.save(schedule);
+        IrrigationRecord savedRecord = recordRepository.save(record);
 
-IrrigationRecord savedRecord = recordRepository.save(record);
+        String title = action.equals("COMPLETED")
+                ? "Irrigation completed"
+                : "Irrigation skipped";
 
-String title = action.equals("COMPLETED")
-        ? "Irrigation completed"
-        : "Irrigation skipped";
+        String message = "Irrigation schedule #" + schedule.getId()
+                + " was marked as " + action.toLowerCase() + ".";
 
-String message = "Irrigation schedule #" + schedule.getId()
-        + " was marked as " + action.toLowerCase() + ".";
+        notificationService.createNotification(
+                ownerId,
+                farmId,
+                title,
+                message,
+                "IRRIGATION",
+                "IRRIGATION:" + savedRecord.getId()
+        );
 
-notificationService.createNotification(
-        farm.getOwner().getId(),
-        farmId,
-        title,
-        message,
-        "IRRIGATION",
-        "IRRIGATION:" + savedRecord.getId()
-);
-
-return toRecordResponse(savedRecord);
+        return toRecordResponse(savedRecord);
     }
 
     // 7. Get irrigation history
@@ -198,7 +194,6 @@ return toRecordResponse(savedRecord);
             Long ownerId) {
 
         getFarm(farmId, ownerId);
-
         getScheduleEntity(farmId, scheduleId);
 
         return recordRepository
@@ -209,14 +204,20 @@ return toRecordResponse(savedRecord);
     }
 
     // 8. Weather-based irrigation suggestions
-
+    @Transactional(readOnly = true)
     public List<IrrigationSuggestionResponse> getSuggestions(
             Long farmId, Long ownerId) {
 
         Farm farm = getFarm(farmId, ownerId);
 
+        User requestingUser = userRepository.findById(ownerId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Authenticated user not found"));
+
         List<DailyForecastResponse> forecast =
-                weatherService.getForecast(farmId, ownerId);
+                weatherService.getForecast(
+                        farmId, ownerId, requestingUser.getRole());
 
         List<IrrigationSuggestionResponse> suggestions =
                 new ArrayList<>();
@@ -236,31 +237,25 @@ return toRecordResponse(savedRecord);
             String priority;
 
             if (rainfall != null && rainfall >= 10.0) {
-
                 recommendation = "POSTPONE_IRRIGATION";
                 reason = "Rainfall of approximately "
                         + rainfall
                         + " mm is forecast. Review whether additional watering is needed.";
                 priority = "HIGH";
 
-            } else if (rainProbability != null
-                    && rainProbability >= 70) {
-
+            } else if (rainProbability != null && rainProbability >= 70) {
                 recommendation = "REVIEW_IRRIGATION";
                 reason = "There is a "
                         + rainProbability
                         + "% chance of rain. Check the forecast before watering.";
                 priority = "MEDIUM";
 
-            } else if (maxTemperature != null
-                    && maxTemperature >= 35.0) {
-
+            } else if (maxTemperature != null && maxTemperature >= 35.0) {
                 recommendation = "CONSIDER_EARLY_IRRIGATION";
                 reason = "High temperature is forecast. Check soil moisture and consider watering during cooler hours.";
                 priority = "MEDIUM";
 
             } else {
-
                 recommendation = "FOLLOW_SCHEDULE";
                 reason = "No significant rainfall or high-temperature condition was detected in the forecast.";
                 priority = "LOW";
@@ -281,12 +276,65 @@ return toRecordResponse(savedRecord);
         return suggestions;
     }
 
-    // 9. Farm ownership check
+    // Only farmers and administrators manage the schedule itself. Field Workers
+    // can view schedules and record whether assigned irrigation was completed/skipped.
+    private void ensureScheduleManager(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "Authenticated user not found"));
+        if ("FIELD_WORKER".equalsIgnoreCase(user.getRole())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Field Workers can record irrigation but cannot create, edit or delete schedules");
+        }
+    }
 
-    private Farm getFarm(Long farmId, Long ownerId) {
+    // 9. Role-based farm access
+    private Farm getFarm(Long farmId, Long userId) {
 
-        return farmRepository
-                .findByIdAndOwnerId(farmId, ownerId)
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Authenticated user not found"
+                ));
+
+        String role = user.getRole();
+
+        // Admin can access any existing farm for irrigation.
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            return farmRepository.findById(farmId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Farm not found"
+                    ));
+        }
+
+        // Field workers can access only actively assigned farms.
+        if ("FIELD_WORKER".equalsIgnoreCase(role)) {
+
+            boolean assigned = assignmentRepository
+                    .findByWorker_IdAndStatusIgnoreCase(userId, "ACTIVE")
+                    .stream()
+                    .anyMatch(assignment ->
+                            assignment.getFarm() != null
+                            && assignment.getFarm().getId().equals(farmId));
+
+            if (!assigned) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Farm not found or not assigned to this worker"
+                );
+            }
+
+            return farmRepository.findById(farmId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Farm not found"
+                    ));
+        }
+
+        // Farmers can access only their own farms.
+        return farmRepository.findByIdAndOwnerId(farmId, userId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Farm not found"
@@ -294,20 +342,18 @@ return toRecordResponse(savedRecord);
     }
 
     // 10. Find schedule belonging to farm
-
     private IrrigationSchedule getScheduleEntity(
             Long farmId, Long scheduleId) {
 
-       return scheduleRepository
-        .findScheduleWithFarm(scheduleId, farmId)
-        .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND,
-                "Irrigation schedule not found"
-        ));
+        return scheduleRepository
+                .findScheduleWithFarm(scheduleId, farmId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Irrigation schedule not found"
+                ));
     }
 
     // 11. Map schedule response
-
     private IrrigationScheduleResponse toScheduleResponse(
             IrrigationSchedule schedule) {
 
@@ -325,7 +371,6 @@ return toRecordResponse(savedRecord);
     }
 
     // 12. Map record response
-
     private IrrigationRecordResponse toRecordResponse(
             IrrigationRecord record) {
 

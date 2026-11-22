@@ -42,7 +42,7 @@ public class EquipmentController {
 
         return ResponseEntity.ok(
                 equipmentService.getFarmEquipment(
-                        farmId, user.getId()));
+                        farmId, user));
     }
 
     @GetMapping("/{equipmentId}")
@@ -55,7 +55,7 @@ public class EquipmentController {
 
         return ResponseEntity.ok(
                 equipmentService.getEquipmentById(
-                        farmId, equipmentId, user.getId()));
+                        farmId, equipmentId, user));
     }
 
     @PutMapping("/{equipmentId}")

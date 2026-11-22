@@ -8,7 +8,10 @@ import {
   Wrench,
   CalendarDays,
   ClipboardList,
+  ClipboardCheck,
   CloudSun,
+  Droplets,
+  BarChart3,
   Bell,
   Bot,
 } from 'lucide-react';
@@ -25,9 +28,10 @@ export const ROLE_PERMISSIONS = {
     'equipmentBookings',
     'resources',
     'weather',
+    'irrigation',
+    'analytics',
     'aiAssistant',
     'notifications',
-    'aiAssistant'
   ],
 
   field_worker: [
@@ -36,8 +40,10 @@ export const ROLE_PERMISSIONS = {
     'profile',
     'equipment',
     'equipmentBookings',
-    'resources',
+    'fieldWork',
     'weather',
+    'irrigation',
+    'analytics',
     'notifications',
   ],
 
@@ -52,6 +58,8 @@ export const ROLE_PERMISSIONS = {
     'equipmentBookings',
     'resources',
     'weather',
+    'irrigation',
+    'analytics',
     'aiAssistant',
     'notifications',
   ],
@@ -104,10 +112,28 @@ export const NAV_ITEMS = [
     icon: ClipboardList,
   },
   {
+    key: 'fieldWork',
+    label: 'My Field Tasks',
+    path: '/field-work',
+    icon: ClipboardCheck,
+  },
+  {
     key: 'weather',
     label: 'Weather Monitoring',
     path: '/weather',
     icon: CloudSun,
+  },
+  {
+    key: 'irrigation',
+    label: 'Irrigation Scheduling',
+    path: '/irrigation',
+    icon: Droplets,
+  },
+  {
+    key: 'analytics',
+    label: 'Agricultural Analytics',
+    path: '/analytics',
+    icon: BarChart3,
   },
   {
   key: 'aiAssistant',

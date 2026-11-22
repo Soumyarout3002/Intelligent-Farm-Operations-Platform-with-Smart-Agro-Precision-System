@@ -111,34 +111,42 @@ public class PlotService {
     }
 
     private Farm getReadableFarm(
-            Long farmId, Long userId, String role) {
+        Long farmId, Long userId, String role) {
 
-        if ("FIELD_WORKER".equalsIgnoreCase(role)) {
-
-            boolean assigned = assignmentRepository
-                    .findByWorker_IdAndStatusIgnoreCase(
-                            userId, "ACTIVE")
-                    .stream()
-                    .anyMatch(assignment ->
-                            assignment.getFarm() != null
-                            && assignment.getFarm().getId().equals(farmId));
-
-            if (!assigned) {
-                throw new ResponseStatusException(
+    if ("ADMIN".equalsIgnoreCase(role)) {
+        return farmRepository.findById(farmId)
+                .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Farm not found or not assigned to this worker"
-                );
-            }
+                        "Farm not found"
+                ));
+    }
 
-            return farmRepository.findById(farmId)
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "Farm not found"
-                    ));
+    if ("FIELD_WORKER".equalsIgnoreCase(role)) {
+
+        boolean assigned = assignmentRepository
+                .findByWorker_IdAndStatusIgnoreCase(
+                        userId, "ACTIVE")
+                .stream()
+                .anyMatch(assignment ->
+                        assignment.getFarm() != null
+                        && assignment.getFarm().getId().equals(farmId));
+
+        if (!assigned) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Farm not found or not assigned to this worker"
+            );
         }
 
-        return getOwnedFarm(farmId, userId);
+        return farmRepository.findById(farmId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Farm not found"
+                ));
     }
+
+    return getOwnedFarm(farmId, userId);
+}
 
     private Farm getOwnedFarm(Long farmId, Long ownerId) {
         return farmRepository.findByIdAndOwnerId(farmId, ownerId)

@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Tractor,
   Plus,
@@ -22,6 +22,9 @@ import {
 
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { listFarms } from '../services/farmService';
+import { request } from '../services/api';
+import { getToken } from '../services/authService';
 import '../styles/equipment.css';
 
 // Keep the same storage key to preserve your equipment records.
@@ -185,7 +188,36 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function EquipmentManagement() {
+function FieldWorkerEquipment() {
+  const [farms, setFarms] = useState([]);
+  const [farmId, setFarmId] = useState('');
+  const [items, setItems] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const loadEquipment = async (id) => {
+    if (!id) { setItems([]); return; }
+    const rows = await request(`/api/farms/${id}/equipment`, { token: getToken() });
+    setItems(Array.isArray(rows) ? rows : []);
+  };
+  useEffect(() => {
+    (async () => {
+      try {
+        const rows = await listFarms(); setFarms(rows);
+        const id = rows[0] ? String(rows[0].id) : ''; setFarmId(id);
+        if (id) await loadEquipment(id);
+      } catch (e) { setError(e.message || 'Could not load assigned farm equipment.'); }
+      finally { setLoading(false); }
+    })();
+  }, []);
+  return <div className="equipment-page">
+    <div className="equipment-heading"><div><h1>Equipment Management</h1><p>Read-only equipment list for your assigned farms.</p></div><Tractor size={30} color="#268a52" /></div>
+    {error && <div className="alert error">{error}</div>}
+    <div className="field"><label htmlFor="worker-equipment-farm">Assigned farm</label><select id="worker-equipment-farm" value={farmId} onChange={async (e) => { const id = e.target.value; setFarmId(id); setLoading(true); try { await loadEquipment(id); setError(''); } catch (err) { setError(err.message); } finally { setLoading(false); } }}><option value="">Select farm</option>{farms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
+    {loading ? <div className="card">Loading equipment…</div> : !items.length ? <div className="card">No equipment records found for this assigned farm.</div> : <div className="equipment-grid">{items.map(item => <article className="equipment-card" key={item.id}><div className="equipment-card-head"><span className="equipment-type">{item.type}</span><span className="equipment-status">{item.status}</span></div><h3>{item.name}</h3><p>{item.description || item.model || 'No description provided.'}</p><div className="equipment-meta"><span>Model: {item.model || '—'}</span><span>Condition: {item.condition || '—'}</span><span>Maintenance: {item.maintenance || '—'}</span></div></article>)}</div>}
+  </div>;
+}
+
+function EquipmentManagementMain() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -194,7 +226,7 @@ export default function EquipmentManagement() {
     user?.role === 'farmer';
 
   const isFieldWorker =
-    user?.role === 'fieldWorker';
+    user?.role === 'field_worker';
 
   const [equipment, setEquipment] = useState(
     readEquipment
@@ -1097,4 +1129,9 @@ export default function EquipmentManagement() {
       )}
     </div>
   );
+}
+
+export default function EquipmentManagement() {
+  const { user } = useAuth();
+  return user?.role === 'field_worker' ? <FieldWorkerEquipment /> : <EquipmentManagementMain />;
 }

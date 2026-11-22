@@ -39,6 +39,7 @@ import {
   listAvailableWorkers,
   assignWorker,
   removeWorker,
+  createFarmTask,
 } from '../services/farmDetailsService';
 
 const getLocalDateTime = () => {
@@ -115,6 +116,13 @@ export default function FarmDetails() {
   const [soilSaving, setSoilSaving] = useState(false);
 
   const [workerId, setWorkerId] = useState('');
+
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [taskAssignmentId, setTaskAssignmentId] = useState('');
+  const [taskDueDate, setTaskDueDate] = useState('');
+  const [taskPriority, setTaskPriority] = useState('MEDIUM');
+  const [taskSaving, setTaskSaving] = useState(false);
   const [file, setFile] = useState(null);
   const [description, setDescription] = useState('');
 
@@ -395,6 +403,39 @@ export default function FarmDetails() {
       toast('Field worker assigned.');
     } catch (e) {
       toast(e.message, 'error');
+    }
+  }
+
+  async function addTask(e) {
+  e.preventDefault();
+
+    if (!taskTitle.trim() || !taskAssignmentId) {
+      toast('Enter a task title and select a field worker.', 'error');
+      return;
+    }
+
+    setTaskSaving(true);
+
+    try {
+      await createFarmTask(id, {
+        title: taskTitle.trim(),
+        description: taskDescription.trim(),
+        assignmentId: Number(taskAssignmentId),
+        dueDate: taskDueDate || null,
+        priority: taskPriority,
+      });
+
+      setTaskTitle('');
+      setTaskDescription('');
+      setTaskAssignmentId('');
+      setTaskDueDate('');
+      setTaskPriority('MEDIUM');
+
+      toast('Task assigned successfully.');
+    } catch (e) {
+      toast(e.message || 'Could not assign task.', 'error');
+    } finally {
+      setTaskSaving(false);
     }
   }
 
@@ -951,7 +992,96 @@ export default function FarmDetails() {
               </div>
             ))
           )}
+
+
+          {/* ASSIGN TASK TO FIELD WORKER */}
+          {canManage && (
+            <form
+              onSubmit={addTask}
+              className="grid-form"
+              style={{ marginTop: 24 }}
+            >
+              <h3 style={{ gridColumn: '1/-1' }}>
+                Assign task to field worker
+              </h3>
+
+              <label>
+                Task title
+                <input
+                  required
+                  style={inputStyle}
+                  value={taskTitle}
+                  onChange={(e) => setTaskTitle(e.target.value)}
+                  placeholder="Enter task title"
+                />
+              </label>
+
+              <label>
+                Select field worker
+                <select
+                  required
+                  style={inputStyle}
+                  value={taskAssignmentId}
+                  onChange={(e) => setTaskAssignmentId(e.target.value)}
+                >
+                  <option value="">Select active worker</option>
+                  {workers
+                    .filter((w) => String(w.status).toUpperCase() === 'ACTIVE')
+                    .map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.workerName}
+                      </option>
+                    ))}
+                </select>
+              </label>
+
+              <label>
+                Description
+                <textarea
+                  style={inputStyle}
+                  value={taskDescription}
+                  onChange={(e) => setTaskDescription(e.target.value)}
+                  placeholder="Enter task description"
+                />
+              </label>
+
+              <label>
+                Due date
+                <input
+                  type="date"
+                  style={inputStyle}
+                  value={taskDueDate}
+                  onChange={(e) => setTaskDueDate(e.target.value)}
+                />
+              </label>
+
+              <label>
+                Priority
+                <select
+                  style={inputStyle}
+                  value={taskPriority}
+                  onChange={(e) => setTaskPriority(e.target.value)}
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                </select>
+              </label>
+
+              <button
+                type="submit"
+                className="btn primary"
+                disabled={taskSaving || workers.filter(
+                  (w) => String(w.status).toUpperCase() === 'ACTIVE'
+                ).length === 0}
+              >
+                {taskSaving ? 'Assigning...' : 'Assign task'}
+              </button>
+            </form>
+          )}
+
         </section>
+
       )}
 
       {/* EDIT FARM MODAL */}

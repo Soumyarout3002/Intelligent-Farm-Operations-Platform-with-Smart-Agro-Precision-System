@@ -1,7 +1,11 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarDays, Plus, Check, X } from 'lucide-react';
 import '../styles/equipment.css';
+import { useAuth } from '../context/AuthContext';
+import { listFarms } from '../services/farmService';
+import { request } from '../services/api';
+import { getToken } from '../services/authService';
 
 const initialBookings = [
   {
@@ -20,7 +24,18 @@ const initialBookings = [
   }
 ];
 
-export default function EquipmentBookings() {
+function FieldWorkerBookings() {
+  const [farms, setFarms] = useState([]);
+  const [farmId, setFarmId] = useState('');
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const load = async (id) => { if (!id) { setBookings([]); return; } const rows = await request(`/api/farms/${id}/equipment/bookings`, { token: getToken() }); setBookings(Array.isArray(rows) ? rows : []); };
+  useEffect(() => { (async () => { try { const rows = await listFarms(); setFarms(rows); const id = rows[0] ? String(rows[0].id) : ''; setFarmId(id); if (id) await load(id); } catch (e) { setError(e.message || 'Could not load bookings.'); } finally { setLoading(false); } })(); }, []);
+  return <div className="equipment-page"><div className="equipment-heading"><div><h1>Equipment Bookings</h1><p>View booking requests and their approval status for assigned farms.</p></div><CalendarDays size={30} color="#268a52" /></div>{error && <div className="alert error">{error}</div>}<div className="field"><label htmlFor="worker-booking-farm">Assigned farm</label><select id="worker-booking-farm" value={farmId} onChange={async e => { const id=e.target.value; setFarmId(id); setLoading(true); try { await load(id); setError(''); } catch(err) { setError(err.message); } finally { setLoading(false); } }}><option value="">Select farm</option>{farms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>{loading ? <div className="card">Loading bookings…</div> : !bookings.length ? <div className="card">No booking records found.</div> : <div className="card"><div className="table-wrap"><table><thead><tr><th>Equipment</th><th>Requested by</th><th>Date</th><th>Status</th></tr></thead><tbody>{bookings.map(b => <tr key={b.id}><td>{b.equipment}</td><td>{b.farmer}</td><td>{b.date}</td><td>{b.status}</td></tr>)}</tbody></table></div></div>}</div>;
+}
+
+function EquipmentBookingsMain() {
   const [bookings, setBookings] = useState(initialBookings);
   const [form, setForm] = useState({
     equipment: '',
@@ -153,4 +168,9 @@ export default function EquipmentBookings() {
       </div>
     </div>
   );
+}
+
+export default function EquipmentBookings() {
+  const { user } = useAuth();
+  return user?.role === 'field_worker' ? <FieldWorkerBookings /> : <EquipmentBookingsMain />;
 }

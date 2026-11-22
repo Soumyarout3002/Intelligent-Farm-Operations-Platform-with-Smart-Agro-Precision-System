@@ -4,6 +4,8 @@ import com.backend.dto.equipment.EquipmentRequest;
 import com.backend.dto.equipment.EquipmentResponse;
 import com.backend.entity.Equipment;
 import com.backend.entity.Farm;
+import com.backend.entity.User;
+import com.backend.repository.FarmWorkerAssignmentRepository;
 import com.backend.repository.EquipmentRepository;
 import com.backend.repository.FarmRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class EquipmentService {
 
     private final EquipmentRepository equipmentRepository;
     private final FarmRepository farmRepository;
+    private final FarmWorkerAssignmentRepository assignmentRepository;
     private final EquipmentBookingRepository bookingRepository;
     private final EquipmentUsageRepository usageRepository;
     private final EquipmentBreakdownRepository breakdownRepository;
@@ -66,9 +69,9 @@ public class EquipmentService {
     @Transactional(readOnly = true)
     public List<EquipmentResponse> getFarmEquipment(
             Long farmId,
-            Long ownerId) {
+            User user) {
 
-        getOwnedFarm(farmId, ownerId);
+        verifyReadAccess(farmId, user);
 
         return equipmentRepository.findByFarmId(farmId)
                 .stream()
@@ -80,9 +83,9 @@ public class EquipmentService {
     public EquipmentResponse getEquipmentById(
             Long farmId,
             Long equipmentId,
-            Long ownerId) {
+            User user) {
 
-        getOwnedFarm(farmId, ownerId);
+        verifyReadAccess(farmId, user);
 
         return toResponse(getFarmEquipmentById(equipmentId, farmId));
     }
@@ -156,6 +159,26 @@ public class EquipmentService {
 
     equipmentRepository.delete(equipment);
 }
+    private void verifyReadAccess(Long farmId, User user) {
+        if (user.getRole() != null && "ADMIN".equalsIgnoreCase(user.getRole())) {
+            if (!farmRepository.existsById(farmId)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Farm not found");
+            }
+            return;
+        }
+        if (user.getRole() != null && "FIELD_WORKER".equalsIgnoreCase(user.getRole())) {
+            boolean assigned = assignmentRepository
+                    .findByWorker_IdAndStatusIgnoreCase(user.getId(), "ACTIVE")
+                    .stream()
+                    .anyMatch(a -> a.getFarm() != null && a.getFarm().getId().equals(farmId));
+            if (!assigned) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Farm not found or not assigned to this worker");
+            }
+            return;
+        }
+        getOwnedFarm(farmId, user.getId());
+    }
+
     private Farm getOwnedFarm(Long farmId, Long ownerId) {
         return farmRepository.findByIdAndOwnerId(farmId, ownerId)
                 .orElseThrow(() -> new ResponseStatusException(

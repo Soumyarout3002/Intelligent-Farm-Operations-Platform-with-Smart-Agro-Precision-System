@@ -67,7 +67,7 @@ public class FarmTaskController {
         User user = getAuthenticatedUser(httpRequest);
 
         return ResponseEntity.ok(
-                taskService.getFarmTasks(farmId, user.getId())
+                taskService.getFarmTasks(farmId, user)
         );
     }
 
@@ -85,7 +85,7 @@ public class FarmTaskController {
                 taskService.updateTaskStatus(
                         farmId,
                         taskId,
-                        user.getId(),
+                        user,
                         status
                 )
         );

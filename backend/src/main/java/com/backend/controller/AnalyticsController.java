@@ -40,7 +40,7 @@ public class AnalyticsController {
         User user = getAuthenticatedUser(httpRequest);
 
         return ResponseEntity.ok(
-                analyticsService.getDashboardAnalytics(user.getId(), farmId, cropName, startDate, endDate)
+                analyticsService.getDashboardAnalytics(user.getId(), user.getRole(), farmId, cropName, startDate, endDate)
         );
     }
 
@@ -56,7 +56,7 @@ public class AnalyticsController {
         User user = getAuthenticatedUser(httpRequest);
 
         return ResponseEntity.ok(
-                analyticsService.getYieldAnalytics(user.getId(), farmId, cropName, season, startDate, endDate)
+                analyticsService.getYieldAnalytics(user.getId(), user.getRole(), farmId, cropName, season, startDate, endDate)
         );
     }
 
@@ -72,7 +72,7 @@ public class AnalyticsController {
         User user = getAuthenticatedUser(httpRequest);
 
         return ResponseEntity.ok(
-                analyticsService.getCostProfitAnalytics(user.getId(), farmId, cropName, season, startDate, endDate)
+                analyticsService.getCostProfitAnalytics(user.getId(), user.getRole(), farmId, cropName, season, startDate, endDate)
         );
     }
 
@@ -86,7 +86,7 @@ public class AnalyticsController {
         User user = getAuthenticatedUser(httpRequest);
 
         return ResponseEntity.ok(
-                analyticsService.getWaterUsageAnalytics(user.getId(), farmId, startDate, endDate)
+                analyticsService.getWaterUsageAnalytics(user.getId(), user.getRole(), farmId, startDate, endDate)
         );
     }
 
@@ -101,7 +101,7 @@ public class AnalyticsController {
         User user = getAuthenticatedUser(httpRequest);
 
         return ResponseEntity.ok(
-                analyticsService.getMachineryAnalytics(user.getId(), farmId, cropName, startDate, endDate)
+                analyticsService.getMachineryAnalytics(user.getId(), user.getRole(), farmId, cropName, startDate, endDate)
         );
     }
 

@@ -15,7 +15,7 @@ export default function Sidebar({ role, open, onClose }) {
             </NavLink>
           ))}
         </nav>
-        <p className="side-note">Frontend demo build. Sample data only.</p>
+        <p className="side-note">Farm operations workspace</p>
       </aside>
     </>
   );

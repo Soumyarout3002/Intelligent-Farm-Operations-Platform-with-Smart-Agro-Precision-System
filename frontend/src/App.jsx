@@ -26,6 +26,9 @@ import ActivityHistory from './pages/ActivityHistory';
 import WeatherMonitoring from './pages/WeatherMonitoring';
 import AIAssistant from './pages/aiAssistant';
 import Notifications from './pages/Notifications';
+import IrrigationScheduling from './pages/IrrigationScheduling';
+import AgriculturalAnalytics from './pages/AgriculturalAnalytics';
+import FieldWorkerTasks from './pages/FieldWorkerTasks';
 
 function Guard({ perm, children }) {
   const { user } = useAuth();
@@ -184,7 +187,41 @@ export default function App() {
           }
         />
 
-        <Route path="/ai-assistant" element={<AIAssistant />} />
+        <Route
+          path="/field-work"
+          element={
+            <Guard perm="fieldWork">
+              <FieldWorkerTasks />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/irrigation"
+          element={
+            <Guard perm="irrigation">
+              <IrrigationScheduling />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/analytics"
+          element={
+            <Guard perm="analytics">
+              <AgriculturalAnalytics />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="/ai-assistant"
+          element={
+            <Guard perm="aiAssistant">
+              <AIAssistant />
+            </Guard>
+          }
+        />
 
         <Route
           path="/notifications"

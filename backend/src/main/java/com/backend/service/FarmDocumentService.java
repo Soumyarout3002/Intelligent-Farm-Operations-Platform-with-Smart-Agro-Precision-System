@@ -1,3 +1,4 @@
+
 package com.backend.service;
 
 import com.backend.dto.farm.FarmDocumentResponse;
@@ -20,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -41,12 +43,12 @@ public class FarmDocumentService {
 
     public FarmDocumentResponse uploadDocument(
             Long farmId,
-            Long ownerId,
+            Long userId,
+            String role,
             MultipartFile file,
             String description) {
 
-        Farm farm = getOwnedFarm(farmId, ownerId);
-
+        Farm farm = getAccessibleFarm(farmId, userId, role);
         validateFile(file);
 
         String originalName = Paths.get(
@@ -58,10 +60,7 @@ public class FarmDocumentService {
         String extension = getExtension(originalName);
         String storageName = UUID.randomUUID() + "." + extension;
 
-        Path uploadPath = Paths.get(uploadDirectory)
-                .toAbsolutePath()
-                .normalize();
-
+        Path uploadPath = getUploadPath();
         Path destination = uploadPath.resolve(storageName).normalize();
 
         if (!destination.startsWith(uploadPath)) {
@@ -71,7 +70,7 @@ public class FarmDocumentService {
 
         try {
             Files.createDirectories(uploadPath);
-           Files.copy(file.getInputStream(), destination);
+            Files.copy(file.getInputStream(), destination);
         } catch (IOException exception) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
@@ -96,7 +95,7 @@ public class FarmDocumentService {
             try {
                 Files.deleteIfExists(destination);
             } catch (IOException ignored) {
-                // Database failure should not hide the original exception.
+                // Preserve the original database exception.
             }
             throw exception;
         }
@@ -104,9 +103,9 @@ public class FarmDocumentService {
 
     @Transactional(readOnly = true)
     public List<FarmDocumentResponse> getFarmDocuments(
-            Long farmId, Long ownerId) {
+            Long farmId, Long userId, String role) {
 
-        getOwnedFarm(farmId, ownerId);
+        getAccessibleFarm(farmId, userId, role);
 
         return documentRepository
                 .findByFarmIdOrderByUploadedAtDesc(farmId)
@@ -119,17 +118,19 @@ public class FarmDocumentService {
     public Resource downloadDocument(
             Long farmId,
             Long documentId,
-            Long ownerId) {
+            Long userId,
+            String role) {
 
-        getOwnedFarm(farmId, ownerId);
+        getAccessibleFarm(farmId, userId, role);
 
         FarmDocument document = findDocument(farmId, documentId);
 
-        Path filePath = getUploadPath()
+        Path uploadPath = getUploadPath();
+        Path filePath = uploadPath
                 .resolve(document.getStorageName())
                 .normalize();
 
-        if (!filePath.startsWith(getUploadPath())) {
+        if (!filePath.startsWith(uploadPath)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Invalid document path");
         }
@@ -154,9 +155,10 @@ public class FarmDocumentService {
     public void deleteDocument(
             Long farmId,
             Long documentId,
-            Long ownerId) {
+            Long userId,
+            String role) {
 
-        getOwnedFarm(farmId, ownerId);
+        getAccessibleFarm(farmId, userId, role);
 
         FarmDocument document = findDocument(farmId, documentId);
 
@@ -173,6 +175,32 @@ public class FarmDocumentService {
         }
 
         documentRepository.delete(document);
+    }
+
+    private Farm getAccessibleFarm(
+            Long farmId, Long userId, String role) {
+
+        if ("FIELD_WORKER".equalsIgnoreCase(role)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Field workers cannot access farm documents");
+        }
+
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            return farmRepository.findById(farmId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Farm not found"));
+        }
+
+        if ("FARMER".equalsIgnoreCase(role)) {
+            return farmRepository.findByIdAndOwnerId(farmId, userId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Farm not found"));
+        }
+
+        throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "You are not allowed to access farm documents");
     }
 
     private void validateFile(MultipartFile file) {
@@ -213,20 +241,14 @@ public class FarmDocumentService {
                     HttpStatus.BAD_REQUEST, "File extension is required");
         }
 
-        return fileName.substring(dotIndex + 1).toLowerCase();
+        return fileName.substring(dotIndex + 1)
+                .toLowerCase(Locale.ROOT);
     }
 
     private Path getUploadPath() {
         return Paths.get(uploadDirectory)
                 .toAbsolutePath()
                 .normalize();
-    }
-
-    private Farm getOwnedFarm(Long farmId, Long ownerId) {
-
-        return farmRepository.findByIdAndOwnerId(farmId, ownerId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Farm not found"));
     }
 
     private FarmDocument findDocument(Long farmId, Long documentId) {

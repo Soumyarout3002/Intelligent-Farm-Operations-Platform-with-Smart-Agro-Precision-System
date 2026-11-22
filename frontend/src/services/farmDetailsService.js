@@ -140,3 +140,11 @@ export const removeWorker = (farmId, assignmentId) =>
     method: 'DELETE',
     token: token(),
   });
+
+  // Farm task operations
+export const createFarmTask = (farmId, data) =>
+  request(`/api/farms/${farmId}/tasks`, {
+    method: 'POST',
+    body: data,
+    token: token(),
+  });

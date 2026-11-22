@@ -7,6 +7,7 @@ import com.backend.entity.User;
 import com.backend.repository.EquipmentBookingRepository;
 import com.backend.repository.EquipmentRepository;
 import com.backend.repository.FarmRepository;
+import com.backend.repository.FarmWorkerAssignmentRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +27,7 @@ public class EquipmentBookingService {
     private final EquipmentBookingRepository bookingRepository;
     private final EquipmentRepository equipmentRepository;
     private final FarmRepository farmRepository;
+    private final FarmWorkerAssignmentRepository assignmentRepository;
     private final NotificationService notificationService;
 
     public EquipmentBooking createBooking(
@@ -192,12 +194,19 @@ return saved;
             return;
         }
 
-        if (!farmRepository.findByIdAndOwnerId(
-                farmId, user.getId()
-        ).isPresent()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "Farm not found"
-            );
+        if (user.getRole() != null && "FIELD_WORKER".equalsIgnoreCase(user.getRole())) {
+            boolean assigned = assignmentRepository
+                    .findByWorker_IdAndStatusIgnoreCase(user.getId(), "ACTIVE")
+                    .stream()
+                    .anyMatch(a -> a.getFarm() != null && a.getFarm().getId().equals(farmId));
+            if (!assigned) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Farm not found or not assigned to this worker");
+            }
+            return;
+        }
+
+        if (!farmRepository.findByIdAndOwnerId(farmId, user.getId()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Farm not found");
         }
     }
 

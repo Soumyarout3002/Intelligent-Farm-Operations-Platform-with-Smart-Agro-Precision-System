@@ -54,9 +54,19 @@ public class FarmService {
         return toResponse(farmRepository.save(farm));
     }
 
+    // Get farms visible to the authenticated user.
     @Transactional(readOnly = true)
     public List<FarmResponse> getMyFarms(Long userId, String role) {
 
+        // Admin can view all farms.
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            return farmRepository.findAll()
+                    .stream()
+                    .map(this::toResponse)
+                    .toList();
+        }
+
+        // Field workers can view only actively assigned farms.
         if ("FIELD_WORKER".equalsIgnoreCase(role)) {
             return assignmentRepository
                     .findByWorker_IdAndStatusIgnoreCase(userId, "ACTIVE")
@@ -65,16 +75,30 @@ public class FarmService {
                     .toList();
         }
 
+        // Farmers can view only their own farms.
         return farmRepository.findByOwnerId(userId)
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
+    // Get one farm with role-based access.
     @Transactional(readOnly = true)
     public FarmResponse getFarmById(
             Long farmId, Long userId, String role) {
 
+        // Admin can view any farm.
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            Farm farm = farmRepository.findById(farmId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Farm not found"
+                    ));
+
+            return toResponse(farm);
+        }
+
+        // Field workers can view only farms actively assigned to them.
         if ("FIELD_WORKER".equalsIgnoreCase(role)) {
 
             boolean assigned = assignmentRepository
@@ -100,9 +124,11 @@ public class FarmService {
             return toResponse(farm);
         }
 
+        // Farmers can view only farms they own.
         return toResponse(getOwnedFarm(farmId, userId));
     }
 
+    // Update remains restricted to the farm owner.
     public FarmResponse updateFarm(
             Long farmId, FarmRequest request, Long ownerId) {
 
@@ -132,6 +158,7 @@ public class FarmService {
         return toResponse(farmRepository.save(farm));
     }
 
+    // Delete remains restricted to the farm owner.
     public void deleteFarm(Long farmId, Long ownerId) {
         Farm farm = getOwnedFarm(farmId, ownerId);
         farmRepository.delete(farm);
