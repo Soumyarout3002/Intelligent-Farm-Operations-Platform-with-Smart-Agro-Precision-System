@@ -27,6 +27,10 @@ import WeatherMonitoring from './pages/WeatherMonitoring';
 import AIAssistant from './pages/aiAssistant';
 import Notifications from './pages/Notifications';
 
+// New modules
+import GISFarmMapping from './pages/GISFarmMapping';
+import CropLifecycleTracking from './pages/CropLifecycleTracking';
+
 function Guard({ perm, children }) {
   const { user } = useAuth();
 
@@ -180,6 +184,26 @@ export default function App() {
           element={
             <Guard perm="weather">
               <WeatherMonitoring />
+            </Guard>
+          }
+        />
+
+        {/* GIS Farm Mapping */}
+        <Route
+          path="/gis-mapping"
+          element={
+            <Guard perm="gis">
+              <GISFarmMapping />
+            </Guard>
+          }
+        />
+
+        {/* Crop Lifecycle Tracking */}
+        <Route
+          path="/crop-lifecycle"
+          element={
+            <Guard perm="cropLifecycle">
+              <CropLifecycleTracking />
             </Guard>
           }
         />
