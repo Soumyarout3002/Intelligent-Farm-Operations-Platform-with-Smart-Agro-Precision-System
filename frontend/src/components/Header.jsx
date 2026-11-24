@@ -6,6 +6,7 @@ import { cap } from '../config/permissions';
 import { categoryMeta } from '../config/notificationCategories';
 import { useNotificationStore, loadNotifications, markAsRead, markAllAsRead, unreadCount } from '../store/notificationStore';
 import { timeAgo } from './notifications/NotificationItem';
+import FarmSelector from './FarmSelector';
 import '../styles/notifications.css';
 
 export default function Header({ onMenu }) {
@@ -39,6 +40,7 @@ export default function Header({ onMenu }) {
     <header className="topbar">
       <button className="icon-btn menu-btn" aria-label="Open menu" onClick={onMenu}><Menu size={22} /></button>
       <div className="grow" />
+      <FarmSelector />
       <div className="notif" ref={popRef}>
         <button className="icon-btn" aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           <Bell size={20} />
@@ -72,10 +74,10 @@ export default function Header({ onMenu }) {
           </div>
         )}
       </div>
-      <div className="me">
+      <Link className="me" to="/profile" title="Open my profile" style={{ color: 'inherit', textDecoration: 'none' }}>
         <span className="avatar">{user.name.charAt(0).toUpperCase()}</span>
         <div><strong>{user.name}</strong><small>{cap(user.role)}</small></div>
-      </div>
+      </Link>
       <button className="btn ghost sm" onClick={logout}><LogOut size={16} /> Logout</button>
     </header>
   );

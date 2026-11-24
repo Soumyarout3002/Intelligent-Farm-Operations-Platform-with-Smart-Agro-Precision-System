@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useFarm } from "../context/FarmContext";
 import {
   Sprout,
   Users,
@@ -81,8 +82,13 @@ const initialExpenses = [
 const TOTAL_BUDGET = 100000;
 
 export default function FarmResourcePlanning() {
-  const [workers, setWorkers] = useState(initialWorkers);
-  const [tasks] = useState(initialTasks);
+  const { selectedFarm } = useFarm();
+  const [allWorkers, setWorkers] = useState(initialWorkers);
+  const [allTasks] = useState(initialTasks);
+  // Workers and tasks shown are those of the farm selected in the header.
+  const farmKey = (selectedFarm?.name || "").trim().toLowerCase();
+  const workers = useMemo(() => allWorkers.filter((w) => (w.farm || "").trim().toLowerCase() === farmKey), [allWorkers, farmKey]);
+  const tasks = useMemo(() => allTasks.filter((t) => (t.farm || "").trim().toLowerCase() === farmKey), [allTasks, farmKey]);
   const [expenses, setExpenses] = useState(initialExpenses);
   const [workerName, setWorkerName] = useState("");
   const [workerRole, setWorkerRole] = useState("");
@@ -112,7 +118,7 @@ export default function FarmResourcePlanning() {
   function addWorker(event) {
     event.preventDefault();
 
-    if (!workerName.trim() || !workerRole.trim() || !workerFarm.trim()) {
+    if (!workerName.trim() || !workerRole.trim() || !selectedFarm) {
       return;
     }
 
@@ -122,7 +128,7 @@ export default function FarmResourcePlanning() {
         id: Date.now(),
         name: workerName.trim(),
         role: workerRole.trim(),
-        farm: workerFarm.trim(),
+        farm: selectedFarm.name,
         attendance: "Present",
         avatar: "👩🏽‍🌾",
       },
@@ -432,7 +438,7 @@ export default function FarmResourcePlanning() {
         <form className="worker-add-form" onSubmit={addWorker}>
           <input value={workerName} onChange={(e) => setWorkerName(e.target.value)} placeholder="Worker name" />
           <input value={workerRole} onChange={(e) => setWorkerRole(e.target.value)} placeholder="Worker role" />
-          <input value={workerFarm} onChange={(e) => setWorkerFarm(e.target.value)} placeholder="Assigned farm" />
+          <input value={selectedFarm?.name || ""} readOnly title="Workers are added to the farm selected in the top bar" placeholder="Select a farm in the top bar" />
           <button type="submit"><Plus size={17} /> Add Worker</button>
         </form>
 

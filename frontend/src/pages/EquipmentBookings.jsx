@@ -1,5 +1,6 @@
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useFarm } from '../context/FarmContext';
 import { CalendarDays, Plus, Check, X } from 'lucide-react';
 import '../styles/equipment.css';
 
@@ -7,6 +8,7 @@ const initialBookings = [
   {
     id: 1,
     equipment: 'Mahindra Tractor',
+    farm: 'Green Valley Farm',
     farmer: 'Ravi Kumar',
     date: '2026-11-02',
     status: 'Pending'
@@ -14,6 +16,7 @@ const initialBookings = [
   {
     id: 2,
     equipment: 'Water Pump',
+    farm: 'Green Valley Farm',
     farmer: 'Suresh',
     date: '2026-11-05',
     status: 'Approved'
@@ -21,7 +24,13 @@ const initialBookings = [
 ];
 
 export default function EquipmentBookings() {
-  const [bookings, setBookings] = useState(initialBookings);
+  const { selectedFarm } = useFarm();
+  const [allBookings, setBookings] = useState(initialBookings);
+  // Only bookings for the farm selected in the header are shown.
+  const bookings = useMemo(() => {
+    const name = (selectedFarm?.name || '').trim().toLowerCase();
+    return allBookings.filter((b) => (b.farm || '').trim().toLowerCase() === name);
+  }, [allBookings, selectedFarm]);
   const [form, setForm] = useState({
     equipment: '',
     farmer: '',
@@ -35,6 +44,7 @@ export default function EquipmentBookings() {
       ...prev,
       {
         ...form,
+        farm: selectedFarm?.name || '',
         id: Date.now(),
         status: 'Pending'
       }

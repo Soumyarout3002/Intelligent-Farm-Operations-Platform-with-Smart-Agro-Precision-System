@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Tractor, Ruler, Layers, Users, Plus, UserPlus, Wheat, Sprout, CloudSun, Droplets, Wind } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { listFarms } from '../services/farmService';
+import { useFarm } from '../context/FarmContext';
+import { getCurrentWeather } from '../services/weatherService';
 import { listUsers } from '../services/userService';
 import { can, cap } from '../config/permissions';
 import SunriseScene from '../components/SunriseScene';
@@ -29,6 +31,8 @@ function Bars({ items, max, cls = '', suffix = '' }) {
 
 export default function Overview() {
   const { user } = useAuth();
+  const { selectedFarm, status: farmStatus } = useFarm();
+  const [wx, setWx] = useState({ state: 'idle', data: null });
   const [farms, setFarms] = useState([]);
   const [users, setUsers] = useState([]);
   const [done, setDone] = useState({});
@@ -64,6 +68,17 @@ export default function Overview() {
     }
   }, [isAdmin]);
 
+  // Live weather for the farm selected in the header (clears first so no stale farm data shows).
+  useEffect(() => {
+    setWx({ state: selectedFarm ? 'loading' : 'idle', data: null });
+    if (!selectedFarm) return undefined;
+    let ignore = false;
+    getCurrentWeather(selectedFarm)
+      .then((data) => { if (!ignore) setWx({ state: 'ready', data }); })
+      .catch(() => { if (!ignore) setWx({ state: 'error', data: null }); });
+    return () => { ignore = true; };
+  }, [selectedFarm]);
+
   const stats = useMemo(() => {
     const count = (key) => Object.entries(farms.reduce((m, f) => ({ ...m, [f[key]]: (m[f[key]] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]);
     const byArea = [...farms].sort((a, b) => toHa(b) - toHa(a)).slice(0, 5).map((f) => [f.name, +toHa(f).toFixed(1)]);
@@ -93,11 +108,26 @@ export default function Overview() {
         <span className="tagpill">Demo build</span>
       </div>
 
-      <div className="alert info">
-        Farm figures, weather and tasks may contain demo data.
-        Recent activities are fetched from the backend.
-      </div>
 
+      <div className="card active-farm-card" style={{ marginBottom: 18, borderLeft: '5px solid #0f766e' }}>
+        {farmStatus === 'loading' && <p className="muted">Loading farms…</p>}
+        {farmStatus !== 'loading' && !selectedFarm && <p className="muted">No farm selected. Add a farm in Farm Management to see farm details here.</p>}
+        {selectedFarm && (
+          <>
+            <h3 style={{ marginTop: 0 }}>Active farm: {selectedFarm.name}</h3>
+            <p className="muted" style={{ marginTop: 0 }}>This farm is used in Weather, Irrigation, Analytics, Inventory, Equipment, Bookings and Resource Planning. Change it with the selector in the top bar.</p>
+            <div className="mini-grid">
+              <div><b>{selectedFarm.status}</b>Status</div>
+              <div><b>{selectedFarm.crop || '—'}</b>Primary crop</div>
+              <div><b>{selectedFarm.soil || '—'}</b>Soil</div>
+              <div><b>{selectedFarm.area} {selectedFarm.unit}</b>Area</div>
+              <div><b>{selectedFarm.plots}</b>Plots</div>
+              <div><b>{selectedFarm.location || '—'}</b>Location</div>
+            </div>
+            <p style={{ marginBottom: 0 }}><Link to={`/farms/${selectedFarm.id}`}>Open farm details →</Link></p>
+          </>
+        )}
+      </div>
 
       <div className="cards">
         {cards.map((c) => <div className="card stat" key={c.label}><c.icon size={22} /><div><strong>{c.value}</strong><span>{c.label}</span></div></div>)}
@@ -111,9 +141,16 @@ export default function Overview() {
 
       <div className="grid3 section">
         <div className="card">
-          <h3>Weather <small className="tagpill">Demo data</small></h3>
-          <div className="weather"><CloudSun size={42} color="#e09a1f" /><div><div className="temp">28°C</div><span className="muted">Partly cloudy</span></div></div>
-          <div className="mini-grid"><div><Droplets size={16} /><b>62%</b>Humidity</div><div><Wind size={16} /><b>11 km/h</b>Wind</div><div><Droplets size={16} /><b>20%</b>Rain chance</div></div>
+          <h3>Weather{selectedFarm ? ` · ${selectedFarm.name}` : ''}</h3>
+          {wx.state === 'loading' && <p className="muted">Loading weather…</p>}
+          {wx.state === 'error' && <p className="muted">Weather is unavailable for this farm right now.</p>}
+          {wx.state === 'idle' && <p className="muted">Select a farm to see its weather.</p>}
+          {wx.state === 'ready' && wx.data && (
+            <>
+              <div className="weather"><CloudSun size={42} color="#e09a1f" /><div><div className="temp">{wx.data.temperatureC != null ? `${Math.round(wx.data.temperatureC)}°C` : '—'}</div><span className="muted">{wx.data.condition}</span></div></div>
+              <div className="mini-grid"><div><Droplets size={16} /><b>{wx.data.humidityPercent != null ? `${Math.round(wx.data.humidityPercent)}%` : '—'}</b>Humidity</div><div><Wind size={16} /><b>{wx.data.windSpeedKmh != null ? `${Math.round(wx.data.windSpeedKmh)} km/h` : '—'}</b>Wind</div><div><Droplets size={16} /><b>{wx.data.rainfallMm ?? 0} mm</b>Rainfall</div></div>
+            </>
+          )}
         </div>
         <div className="card">
           <h3>Task checklist <small className="tagpill">Demo</small></h3>

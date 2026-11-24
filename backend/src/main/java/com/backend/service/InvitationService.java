@@ -116,7 +116,7 @@ public class InvitationService {
             invitationRepository.save(savedInvitation);
 
             throw new IllegalStateException(
-                    "Invitation could not be emailed. Please check Gmail SMTP configuration.",
+                    "Invitation could not be emailed: " + ex.getMessage(),
                     ex);
         }
 

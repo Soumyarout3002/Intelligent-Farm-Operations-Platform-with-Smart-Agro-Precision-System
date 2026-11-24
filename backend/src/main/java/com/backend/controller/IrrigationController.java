@@ -2,6 +2,7 @@ package com.backend.controller;
 
 import com.backend.dto.irrigation.*;
 import com.backend.entity.User;
+import com.backend.security.RequireRole;
 import com.backend.service.IrrigationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -22,6 +23,7 @@ public class IrrigationController {
 
     // Create irrigation schedule
 
+    @RequireRole({"ADMIN", "FARMER"})
     @PostMapping("/schedules")
     public ResponseEntity<IrrigationScheduleResponse> createSchedule(
             @PathVariable Long farmId,
@@ -66,6 +68,7 @@ public class IrrigationController {
 
     // Update schedule
 
+    @RequireRole({"ADMIN", "FARMER"})
     @PutMapping("/schedules/{scheduleId}")
     public IrrigationScheduleResponse updateSchedule(
             @PathVariable Long farmId,
@@ -83,6 +86,7 @@ public class IrrigationController {
 
     // Delete schedule
 
+    @RequireRole({"ADMIN", "FARMER"})
     @DeleteMapping("/schedules/{scheduleId}")
     public ResponseEntity<Void> deleteSchedule(
             @PathVariable Long farmId,

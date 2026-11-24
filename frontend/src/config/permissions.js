@@ -3,13 +3,13 @@ import {
   LayoutDashboard,
   Users,
   Tractor,
-  UserCircle,
   Package,
   Wrench,
   CalendarDays,
   ClipboardList,
   CloudSun,
-  Bell,
+  Droplets,
+  BarChart3,
   Bot,
 } from 'lucide-react';
 
@@ -25,9 +25,10 @@ export const ROLE_PERMISSIONS = {
     'equipmentBookings',
     'resources',
     'weather',
+    'irrigation',
+    'analytics',
     'aiAssistant',
     'notifications',
-    'aiAssistant'
   ],
 
   field_worker: [
@@ -52,6 +53,8 @@ export const ROLE_PERMISSIONS = {
     'equipmentBookings',
     'resources',
     'weather',
+    'irrigation',
+    'analytics',
     'aiAssistant',
     'notifications',
   ],
@@ -110,23 +113,27 @@ export const NAV_ITEMS = [
     icon: CloudSun,
   },
   {
-  key: 'aiAssistant',
-  label: 'AI Assistant',
-  path: '/ai-assistant',
-  icon: Bot,
+    key: 'irrigation',
+    label: 'Irrigation Scheduling',
+    path: '/irrigation',
+    icon: Droplets,
   },
   {
-    key: 'notifications',
-    label: 'Notifications',
-    path: '/notifications',
-    icon: Bell,
+    key: 'analytics',
+    label: 'Agricultural Analytics',
+    path: '/analytics',
+    icon: BarChart3,
   },
   {
-    key: 'profile',
-    label: 'User Profile',
-    path: '/profile',
-    icon: UserCircle,
+    key: 'aiAssistant',
+    label: 'AI Assistant',
+    path: '/ai-assistant',
+    icon: Bot,
   },
+  // Notifications now live in the header bell (see Header.jsx).
+  // The 'notifications' permission and the /notifications route stay for the "View all" page.
+  // User Profile is no longer in the sidebar; it opens from the header name/avatar.
+  // The 'profile' permission and /profile route are unchanged.
 ];
 
 // Normalize backend roles such as FIELD_WORKER for frontend use.
