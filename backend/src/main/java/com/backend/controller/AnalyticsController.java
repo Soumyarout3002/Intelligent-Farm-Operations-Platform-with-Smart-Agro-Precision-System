@@ -6,6 +6,7 @@ import com.backend.dto.analytics.MachineryAnalyticsResponse;
 import com.backend.dto.analytics.WaterUsageAnalyticsResponse;
 import com.backend.dto.analytics.YieldAnalyticsResponse;
 import com.backend.entity.User;
+import com.backend.security.RequireRole;
 import com.backend.service.AnalyticsReportService;
 import com.backend.service.AnalyticsService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +23,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
+@RequireRole({"ADMIN", "FARMER"})
 @RequestMapping("/api/analytics")
 @RequiredArgsConstructor
 public class AnalyticsController {

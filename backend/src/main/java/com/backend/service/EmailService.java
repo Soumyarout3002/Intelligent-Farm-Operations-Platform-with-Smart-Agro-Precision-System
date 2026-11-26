@@ -1,12 +1,18 @@
 package com.backend.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailAuthenticationException;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
+
+    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
     private final JavaMailSender mailSender;
 
@@ -54,6 +60,22 @@ public class EmailService {
                 "Regards,\nFarmVerse Nexus Team"
         );
 
-        mailSender.send(message);
+        try {
+            mailSender.send(message);
+        } catch (MailAuthenticationException ex) {
+            // Never log credentials or the invitation link/token.
+            log.error("SMTP authentication was rejected by the mail server: {}", ex.getMessage());
+            throw new IllegalStateException(
+                    "The mail server rejected the sender login. Check MAIL_USERNAME and the "
+                    + "Gmail App Password (16 lowercase letters, generated for that same account).",
+                    ex);
+        } catch (MailException ex) {
+            log.error("Invitation email could not be sent ({}): {}",
+                    ex.getClass().getSimpleName(), ex.getMessage());
+            throw new IllegalStateException(
+                    "The invitation email could not be sent (" + ex.getClass().getSimpleName()
+                    + "). Check the SMTP host, port and network access.",
+                    ex);
+        }
     }
 }

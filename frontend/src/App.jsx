@@ -26,10 +26,8 @@ import ActivityHistory from './pages/ActivityHistory';
 import WeatherMonitoring from './pages/WeatherMonitoring';
 import AIAssistant from './pages/aiAssistant';
 import Notifications from './pages/Notifications';
-
-// New modules
-import GISFarmMapping from './pages/GISFarmMapping';
-import CropLifecycleTracking from './pages/CropLifecycleTracking';
+import IrrigationScheduling from './pages/IrrigationScheduling';
+import AgriculturalAnalytics from './pages/AgriculturalAnalytics';
 
 function Guard({ perm, children }) {
   const { user } = useAuth();
@@ -188,22 +186,20 @@ export default function App() {
           }
         />
 
-        {/* GIS Farm Mapping */}
         <Route
-          path="/gis-mapping"
+          path="/irrigation"
           element={
-            <Guard perm="gis">
-              <GISFarmMapping />
+            <Guard perm="irrigation">
+              <IrrigationScheduling />
             </Guard>
           }
         />
 
-        {/* Crop Lifecycle Tracking */}
         <Route
-          path="/crop-lifecycle"
+          path="/analytics"
           element={
-            <Guard perm="cropLifecycle">
-              <CropLifecycleTracking />
+            <Guard perm="analytics">
+              <AgriculturalAnalytics />
             </Guard>
           }
         />

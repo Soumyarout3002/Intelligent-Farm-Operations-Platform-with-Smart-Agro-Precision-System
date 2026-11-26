@@ -1,4 +1,5 @@
 
+import { useFarm } from '../context/FarmContext';
 import { useMemo, useState } from 'react';
 import {
   Tractor,
@@ -188,6 +189,7 @@ function StatusBadge({ status }) {
 export default function EquipmentManagement() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { selectedFarm } = useFarm();
 
   const canManage =
     user?.role === 'admin' ||
@@ -221,7 +223,7 @@ export default function EquipmentManagement() {
 
   // Field Workers only see equipment belonging
   // to their assigned farm.
-  const visibleEquipment = useMemo(() => {
+  const roleVisibleEquipment = useMemo(() => {
     if (!isFieldWorker) {
       return equipment;
     }
@@ -240,6 +242,15 @@ export default function EquipmentManagement() {
         assignedFarm
     );
   }, [equipment, isFieldWorker, user?.assignedFarm]);
+
+  // Only equipment of the farm selected in the header is shown.
+  const visibleEquipment = useMemo(() => {
+    if (!selectedFarm) return [];
+    const name = selectedFarm.name.trim().toLowerCase();
+    return roleVisibleEquipment.filter(
+      (item) => (item.farm || '').trim().toLowerCase() === name
+    );
+  }, [roleVisibleEquipment, selectedFarm]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -308,7 +319,7 @@ export default function EquipmentManagement() {
     if (!canManage) return;
 
     setEditingId(null);
-    setForm({ ...emptyForm });
+    setForm({ ...emptyForm, farm: selectedFarm?.name || '' });
     setShowForm(true);
   }
 
@@ -934,6 +945,7 @@ export default function EquipmentManagement() {
                     )
                   }
                   placeholder="Enter farm name"
+                  readOnly={editingId === null}
                 />
               </div>
 

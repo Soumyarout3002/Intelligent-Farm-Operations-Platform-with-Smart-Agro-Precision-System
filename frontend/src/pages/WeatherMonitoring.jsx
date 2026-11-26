@@ -5,7 +5,7 @@ import {
   ShieldCheck, Tractor, Lightbulb,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { listFarms } from '../services/farmService';
+import { useFarm } from '../context/FarmContext';
 import {
   WEATHER_SAMPLE_MODE, getCurrentWeather, getForecast, getWeatherAlerts, getWeatherHistory,
 } from '../services/weatherService';
@@ -226,31 +226,10 @@ function History({ state, range, onRange, onRetry }) {
 
 export default function WeatherMonitoring() {
   const { user } = useAuth();
-  const [farms, setFarms] = useState([]);
-  const [farmsState, setFarmsState] = useState('loading');
-  const [farmsError, setFarmsError] = useState('');
-  const [farmId, setFarmId] = useState('');
+  // The active farm is shared across the app (see FarmContext / header farm selector).
+  const { farms, status: farmsState, error: farmsError, selectedFarm: farm, reload: reloadFarms } = useFarm();
   const [reloadKey, setReloadKey] = useState(0);
   const [range, setRange] = useState(30);
-  const [farmsReload, setFarmsReload] = useState(0);
-
-  // Farms come from the existing Farm Management API - users never re-enter farm details.
-  // The backend already limits this list by role (farmer: own, field worker: assigned, admin: all).
-  useEffect(() => {
-    let ignore = false;
-    setFarmsState('loading');
-    listFarms()
-      .then((list) => {
-        if (ignore) return;
-        setFarms(list);
-        setFarmId((current) => (list.some((f) => String(f.id) === current) ? current : list[0] ? String(list[0].id) : ''));
-        setFarmsState('ready');
-      })
-      .catch((error) => { if (!ignore) { setFarmsError(error.message); setFarmsState('error'); } });
-    return () => { ignore = true; };
-  }, [farmsReload]);
-
-  const farm = useMemo(() => farms.find((f) => String(f.id) === farmId) || null, [farms, farmId]);
 
   const loadCurrent = useCallback(() => getCurrentWeather(farm), [farm]);
   const loadForecast = useCallback(() => getForecast(farm, 7), [farm]);
@@ -275,12 +254,6 @@ export default function WeatherMonitoring() {
           <p className="muted">Current conditions, forecast, alerts and history for your farms.</p>
         </div>
         <div className="actions-row wx-controls">
-          <div className="field wx-farm-select">
-            <label htmlFor="wx-farm">Farm</label>
-            <select id="wx-farm" value={farmId} onChange={(e) => setFarmId(e.target.value)} disabled={farmsState !== 'ready' || farms.length === 0}>
-              {farms.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-            </select>
-          </div>
           <button className="btn ghost" onClick={refresh} disabled={!farm}><RefreshCw size={16} /> Refresh</button>
         </div>
       </div>
@@ -292,7 +265,7 @@ export default function WeatherMonitoring() {
       )}
 
       {farmsState === 'loading' && <Skeleton height={190} />}
-      {farmsState === 'error' && <SectionError message={`Could not load your farms. ${farmsError}`} onRetry={() => setFarmsReload((k) => k + 1)} />}
+      {farmsState === 'error' && <SectionError message={`Could not load your farms. ${farmsError}`} onRetry={reloadFarms} />}
       {farmsState === 'ready' && farms.length === 0 && (
         <div className="empty big">
           <Tractor size={36} />

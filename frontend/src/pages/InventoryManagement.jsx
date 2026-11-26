@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import "../styles/inventory.css";
+import { useFarm } from "../context/FarmContext";
 
 const INITIAL_ITEMS = [
   { id: 1, name: "Rice Seeds", category: "Seeds", quantity: 120, unit: "kg", minimum: 30 },
@@ -41,7 +42,15 @@ function InventoryImage({ src, alt, className = "" }) {
 }
 
 export default function InventoryManagement() {
-  const [items, setItems] = useState(INITIAL_ITEMS);
+  // Stock is kept per farm: the farm chosen in the header decides which stock list is shown/edited.
+  const { selectedFarmId } = useFarm();
+  const [stockByFarm, setStockByFarm] = useState({});
+  const items = stockByFarm[selectedFarmId] ?? INITIAL_ITEMS;
+  const setItems = (updater) =>
+    setStockByFarm((prev) => {
+      const current = prev[selectedFarmId] ?? INITIAL_ITEMS;
+      return { ...prev, [selectedFarmId]: typeof updater === "function" ? updater(current) : updater };
+    });
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
